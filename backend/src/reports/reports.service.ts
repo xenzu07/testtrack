@@ -1,0 +1,233 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import { Prisma, Role, Status, Urgency } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { CreateReportDto } from './dto/create-report.dto';
+import { ListReportsDto } from './dto/list-reports.dto';
+import { RouteReportDto } from './dto/route-report.dto';
+import { EventsGateway } from '../events/events.gateway';
+import { CreateFeedbackDto } from './dto/create-feedback.dto';
+
+const reportInclude = {
+  category: true,
+  location: true,
+  proposedTradeUnit: true,
+  photos: true,
+  reporter: { select: { id: true, fullName: true, userType: true } },
+  jobOrder: true,
+  logs: { orderBy: { createdAt: 'asc' } },
+  feedback: true,
+} satisfies Prisma.ReportInclude;
+
+@Injectable()
+export class ReportsService {
+  constructor(private prisma: PrismaService, private events: EventsGateway) {}
+
+  // dropdown data for the mobile report form
+  async options() {
+    const [categories, locations] = await Promise.all([
+      this.prisma.issueCategory.findMany({
+        include: { defaultTradeUnit: { select: { id: true, name: true } } },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.location.findMany({
+        orderBy: [{ building: 'asc' }, { floor: 'asc' }, { room: 'asc' }],
+      }),
+    ]);
+    return { categories, locations, urgencies: Object.values(Urgency) };
+  }
+
+  async create(
+    userId: string,
+    dto: CreateReportDto,
+    file: Express.Multer.File,
+  ) {
+    const category = await this.prisma.issueCategory.findUnique({
+      where: { id: dto.categoryId },
+    });
+    if (!category) throw new NotFoundException('Category not found');
+
+    const location = await this.prisma.location.findUnique({
+      where: { id: dto.locationId },
+    });
+    if (!location) throw new NotFoundException('Location not found');
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const report = await tx.report.create({
+        data: {
+          reporterId: userId,
+          locationId: dto.locationId,
+          categoryId: dto.categoryId,
+          // rule-based routing: category -> default trade unit
+          proposedTradeUnitId: category.defaultTradeUnitId,
+          description: dto.description,
+          urgency: dto.urgency,
+          photos: { create: [{ storageUrl: `/uploads/${file.filename}` }] },
+        },
+      });
+
+      await tx.statusLog.create({
+        data: {
+          reportId: report.id,
+          newStatus: Status.SUBMITTED,
+          remarks: 'Report submitted',
+          changedById: userId,
+        },
+      });
+
+      return tx.report.findUnique({
+        where: { id: report.id },
+        include: reportInclude,
+      });
+    });
+
+    if (created) {
+      this.events.statusChanged(
+        {
+          reportId: created.id,
+          jobOrderId: null,
+          status: Status.SUBMITTED,
+          message: 'New report submitted',
+        },
+        [userId],
+      );
+    }
+    return created;
+  }
+
+  // coordinator confirms or changes the proposed trade unit
+  async routeReport(id: string, userId: string, dto: RouteReportDto) {
+    const report = await this.prisma.report.findUnique({
+      where: { id },
+      include: { jobOrder: true, proposedTradeUnit: true },
+    });
+    if (!report) throw new NotFoundException('Report not found');
+    if (report.jobOrder) {
+      throw new BadRequestException('A job order already exists for this report');
+    }
+
+    const unit = await this.prisma.tradeUnit.findUnique({
+      where: { id: dto.tradeUnitId },
+    });
+    if (!unit) throw new NotFoundException('Trade unit not found');
+
+    const sameUnit = report.proposedTradeUnitId === unit.id;
+
+    // nothing changed: don't write a duplicate log entry
+    if (sameUnit && report.status === Status.UNDER_REVIEW) {
+      return this.prisma.report.findUnique({ where: { id }, include: reportInclude });
+    }
+
+    const note = sameUnit
+      ? `Routing to ${unit.name} confirmed`
+      : `Reassigned from ${report.proposedTradeUnit.name} to ${unit.name}`;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.report.update({
+        where: { id },
+        data: { proposedTradeUnitId: unit.id, status: Status.UNDER_REVIEW },
+      });
+      await tx.statusLog.create({
+        data: {
+          reportId: id,
+          oldStatus: report.status,
+          newStatus: Status.UNDER_REVIEW,
+          remarks: dto.remarks ? `${note}: ${dto.remarks}` : note,
+          changedById: userId,
+        },
+      });
+      return tx.report.findUnique({ where: { id }, include: reportInclude });
+    });
+
+    this.events.statusChanged(
+      { reportId: id, jobOrderId: null, status: Status.UNDER_REVIEW, message: note },
+      [report.reporterId],
+    );
+    return updated;
+  }
+
+  findMine(userId: string) {
+    return this.prisma.report.findMany({
+      where: { reporterId: userId },
+      include: reportInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  findAll(filters: ListReportsDto) {
+    return this.prisma.report.findMany({
+      where: {
+        status: filters.status,
+        urgency: filters.urgency,
+        categoryId: filters.categoryId,
+      },
+      include: reportInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findOne(id: string, user: { userId: string; role: Role }) {
+    const report = await this.prisma.report.findUnique({
+      where: { id },
+      include: reportInclude,
+    });
+    if (!report) throw new NotFoundException('Report not found');
+
+    const isStaff = user.role === Role.COORDINATOR || user.role === Role.ADMIN;
+    if (!isStaff && report.reporterId !== user.userId) {
+      throw new ForbiddenException('You cannot view this report');
+    }
+    return report;
+  }
+
+  async addFeedback(id: string, userId: string, dto: CreateFeedbackDto) {
+    const report = await this.prisma.report.findUnique({
+      where: { id },
+      include: { feedback: true, jobOrder: true },
+    });
+    if (!report) throw new NotFoundException('Report not found');
+    if (report.reporterId !== userId) {
+      throw new ForbiddenException('You can only rate your own reports');
+    }
+    if (report.status !== Status.CLOSED) {
+      throw new BadRequestException(
+        'Feedback can be given once the work is verified and closed',
+      );
+    }
+    if (report.feedback) {
+      throw new ConflictException('Feedback was already submitted for this report');
+    }
+
+    try {
+      await this.prisma.feedback.create({
+        data: {
+          reportId: id,
+          reporterId: userId,
+          rating: dto.rating,
+          comment: dto.comment?.trim() || null,
+        },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        throw new ConflictException('Feedback was already submitted for this report');
+      }
+      throw e;
+    }
+
+    this.events.statusChanged(
+      {
+        reportId: id,
+        jobOrderId: report.jobOrder?.id ?? null,
+        status: report.status,
+        message: 'Feedback received',
+      },
+      [userId],
+    );
+    return this.prisma.report.findUnique({ where: { id }, include: reportInclude });
+  }
+}
