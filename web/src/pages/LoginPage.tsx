@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (user) return <Navigate to="/reports" replace />;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -21,7 +21,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(email.trim(), password);
-      navigate('/reports', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     }

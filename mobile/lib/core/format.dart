@@ -35,6 +35,13 @@ String formatDate(String iso) {
   return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
 }
 
+String formatHours(num? h) {
+  if (h == null) return '-';
+  if (h < 1) return '${(h * 60).round()} min';
+  if (h < 48) return '${h.toStringAsFixed(1)} h';
+  return '${(h / 24).toStringAsFixed(1)} days';
+}
+
 class StatusChip extends StatelessWidget {
   final String status;
   const StatusChip(this.status, {super.key});

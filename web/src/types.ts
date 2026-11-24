@@ -128,3 +128,57 @@ export interface ManagedUser {
   isActive: boolean;
   tradeUnit: TradeUnit | null;
 }
+
+export interface CountItem {
+  label: string;
+  count: number;
+}
+
+export interface TimePoint {
+  date: string; // YYYY-MM-DD (Manila time; Monday for weekly buckets)
+  count: number;
+}
+
+export interface TechnicianStats {
+  assigned: number;
+  active: number;
+  delayed: number;
+  finished: number;
+  avgCompletionHours: number | null;
+  onTimeRate: number | null;
+  onTimeSample: number;
+  avgRating: number | null;
+  ratingCount: number;
+  reworkCount: number;
+  firstTimeApprovalRate: number | null;
+}
+
+export interface TechnicianRow extends TechnicianStats {
+  technicianId: string;
+  name: string;
+}
+
+export interface AnalyticsOverview {
+  rangeDays: number | null;
+  unit: 'day' | 'week';
+  summary: {
+    total: number;
+    awaitingAction: number;
+    finished: number;
+    avgResolutionHours: number | null;
+    overdueJobs: number;
+    avgRating: number | null;
+    ratingCount: number;
+  };
+  reportsOverTime: TimePoint[];
+  resolvedOverTime: TimePoint[];
+  byStatus: CountItem[];
+  byUrgency: CountItem[];
+  byCategory: CountItem[];
+  byTradeUnit: CountItem[];
+  byBuilding: CountItem[];
+  topLocations: CountItem[];
+  byWeekday: CountItem[];
+  byHour: CountItem[];
+  technicians: TechnicianRow[];
+}

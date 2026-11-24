@@ -6,6 +6,8 @@ import ReportsPage from './pages/ReportsPage';
 import ReportDetailPage from './pages/ReportDetailPage';
 import JobOrdersPage from './pages/JobOrdersPage';
 import UsersPage from './pages/UsersPage';
+import DashboardPage from './pages/DashboardPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 export default function App() {
   return (
@@ -18,8 +20,10 @@ export default function App() {
             <Route path="/reports/:id" element={<ReportDetailPage />} />
             <Route path="/job-orders" element={<JobOrdersPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
           </Route>
-          <Route path="*" element={<Navigate to="/reports" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
