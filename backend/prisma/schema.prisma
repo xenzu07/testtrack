@@ -7,55 +7,31 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  REPORTER
-  TECHNICIAN
-  COORDINATOR
-  ADMIN
-}
-
-enum Urgency {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum Status {
-  SUBMITTED
-  UNDER_REVIEW
-  ASSIGNED
-  IN_PROGRESS
-  COMPLETED
-  DELAYED
-  CLOSED
-}
-
 model User {
-  id           String     @id @default(uuid())
-  fullName     String
-  email        String     @unique
-  passwordHash String
-  role         Role
-  userType     String?
-  isActive     Boolean    @default(true)
-  tradeUnitId  String?
-  tradeUnit    TradeUnit? @relation(fields: [tradeUnitId], references: [id])
-  reports      Report[]   @relation("Reporter")
-  jobs         JobOrder[] @relation("Technician")
+  id             String          @id @default(uuid())
+  fullName       String
+  email          String          @unique
+  passwordHash   String
+  role           Role
+  userType       String?
+  isActive       Boolean         @default(true)
+  tradeUnitId    String?
+  feedback       Feedback[]
+  jobs           JobOrder[]      @relation("Technician")
+  jobsVerified   JobOrder[]      @relation("Verifier")
   delaysReported MaterialDelay[] @relation("DelayReporter")
   delaysResolved MaterialDelay[] @relation("DelayResolver")
-  jobsVerified   JobOrder[] @relation("Verifier")
-  feedback       Feedback[]
+  reports        Report[]        @relation("Reporter")
+  tradeUnit      TradeUnit?      @relation(fields: [tradeUnitId], references: [id])
 }
 
 model TradeUnit {
   id         String          @id @default(uuid())
   name       String          @unique
-  users      User[]
   categories IssueCategory[]
   jobOrders  JobOrder[]
   reports    Report[]
+  users      User[]
 }
 
 model IssueCategory {
@@ -79,85 +55,109 @@ model Location {
 model Report {
   id                  String        @id @default(uuid())
   reporterId          String
-  reporter            User          @relation("Reporter", fields: [reporterId], references: [id])
   locationId          String
-  location            Location      @relation(fields: [locationId], references: [id])
   categoryId          String
-  category            IssueCategory @relation(fields: [categoryId], references: [id])
   proposedTradeUnitId String
-  proposedTradeUnit   TradeUnit     @relation(fields: [proposedTradeUnitId], references: [id])
   description         String
   urgency             Urgency
   status              Status        @default(SUBMITTED)
   createdAt           DateTime      @default(now())
-  photos              ReportPhoto[]
-  jobOrder            JobOrder?
-  logs                StatusLog[]
   feedback            Feedback?
+  jobOrder            JobOrder?
+  category            IssueCategory @relation(fields: [categoryId], references: [id])
+  location            Location      @relation(fields: [locationId], references: [id])
+  proposedTradeUnit   TradeUnit     @relation(fields: [proposedTradeUnitId], references: [id])
+  reporter            User          @relation("Reporter", fields: [reporterId], references: [id])
+  photos              ReportPhoto[]
+  logs                StatusLog[]
 }
 
 model ReportPhoto {
   id         String @id @default(uuid())
   reportId   String
-  report     Report @relation(fields: [reportId], references: [id])
   storageUrl String
+  report     Report @relation(fields: [reportId], references: [id])
 }
 
 model JobOrder {
-  id            String    @id @default(uuid())
-  jobOrderNo    String    @unique
-  reportId      String    @unique
-  report        Report    @relation(fields: [reportId], references: [id])
+  id            String          @id @default(uuid())
+  jobOrderNo    String          @unique
+  reportId      String          @unique
   tradeUnitId   String
-  tradeUnit     TradeUnit @relation(fields: [tradeUnitId], references: [id])
   technicianId  String?
-  technician    User?     @relation("Technician", fields: [technicianId], references: [id])
   materialsNote String?
   targetDate    DateTime?
-  status        Status    @default(ASSIGNED)
+  status        Status          @default(ASSIGNED)
   createdById   String
-  createdAt     DateTime  @default(now())
-  delays        MaterialDelay[]
-  verifiedById  String?
-  verifiedBy    User?     @relation("Verifier", fields: [verifiedById], references: [id])
+  createdAt     DateTime        @default(now())
   verifiedAt    DateTime?
+  verifiedById  String?
+  report        Report          @relation(fields: [reportId], references: [id])
+  technician    User?           @relation("Technician", fields: [technicianId], references: [id])
+  tradeUnit     TradeUnit       @relation(fields: [tradeUnitId], references: [id])
+  verifiedBy    User?           @relation("Verifier", fields: [verifiedById], references: [id])
+  delays        MaterialDelay[]
 }
 
 model StatusLog {
   id          String   @id @default(uuid())
   reportId    String
-  report      Report   @relation(fields: [reportId], references: [id])
   oldStatus   Status?
   newStatus   Status
   remarks     String?
   photoUrl    String?
   changedById String
   createdAt   DateTime @default(now())
+  report      Report   @relation(fields: [reportId], references: [id])
 }
 
 model MaterialDelay {
   id                String    @id @default(uuid())
   jobOrderId        String
-  jobOrder          JobOrder  @relation(fields: [jobOrderId], references: [id])
   reason            String
   materialsNote     String?
   revisedTargetDate DateTime?
   previousStatus    Status
   reportedById      String
-  reportedBy        User      @relation("DelayReporter", fields: [reportedById], references: [id])
   createdAt         DateTime  @default(now())
   resolvedAt        DateTime?
   resolvedById      String?
+  jobOrder          JobOrder  @relation(fields: [jobOrderId], references: [id])
+  reportedBy        User      @relation("DelayReporter", fields: [reportedById], references: [id])
   resolvedBy        User?     @relation("DelayResolver", fields: [resolvedById], references: [id])
 }
 
 model Feedback {
   id         String   @id @default(uuid())
   reportId   String   @unique
-  report     Report   @relation(fields: [reportId], references: [id])
   reporterId String
-  reporter   User     @relation(fields: [reporterId], references: [id])
   rating     Int
   comment    String?
   createdAt  DateTime @default(now())
+  report     Report   @relation(fields: [reportId], references: [id])
+  reporter   User     @relation(fields: [reporterId], references: [id])
+}
+
+enum Role {
+  REPORTER
+  TECHNICIAN
+  COORDINATOR
+  ADMIN
+}
+
+enum Urgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Status {
+  SUBMITTED
+  UNDER_REVIEW
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CLOSED
 }

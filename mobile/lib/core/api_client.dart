@@ -29,6 +29,9 @@ class ApiClient {
   late final Dio dio;
   String? token;
   VoidCallback? onUnauthorized;
+
+  /// Re-point the client after the server address changes.
+  void applyBaseUrl() => dio.options.baseUrl = AppConfig.baseUrl;
 }
 
 const _networkErrors = {
@@ -41,7 +44,9 @@ const _networkErrors = {
 String errorMessage(Object e) {
   if (e is DioException) {
     if (_networkErrors.contains(e.type)) {
-      return 'No internet connection or the server is unreachable. Please try again.';
+      return 'Cannot reach the server at ${AppConfig.baseUrl}.\n'
+          'Make sure the backend is running, your phone is on the same Wi-Fi as '
+          'the PC, and the server address (tap the gear icon) is correct.';
     }
     final data = e.response?.data;
     if (data is Map && data['message'] != null) {

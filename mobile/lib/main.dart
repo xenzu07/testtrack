@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'core/config.dart';
 import 'core/nav.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/auth/login_screen.dart';
@@ -7,7 +8,9 @@ import 'features/home/placeholder_home.dart';
 import 'features/reports/my_reports_screen.dart';
 import 'features/jobs/my_jobs_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppConfig.load();
   runApp(
     ChangeNotifierProvider(
       create: (_) => AuthProvider(),

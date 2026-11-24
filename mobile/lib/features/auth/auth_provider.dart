@@ -41,7 +41,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     final res = await ApiClient.instance.dio
-        .post('/auth/login', data: {'email': email, 'password': password});
+        .post('/auth/login', data: {'email': email.trim().toLowerCase(), 'password': password});
     final token = res.data['accessToken'] as String;
     final u = AuthUser.fromJson(res.data['user']);
 

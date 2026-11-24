@@ -242,6 +242,7 @@ function UserForm({
             Temporary password (min. 8 characters)
             <input
               type="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -292,6 +293,7 @@ function UserForm({
             Set a new password (min. 8 characters)
             <input
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
             />
@@ -301,7 +303,7 @@ function UserForm({
             disabled={busy || newPassword.length < 8}
             onClick={() => void resetPassword()}
           >
-            Reset password
+            Set new password
           </button>
         </div>
       )}
