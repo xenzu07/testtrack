@@ -175,3 +175,128 @@ select:focus, input:focus, textarea:focus { outline: 2px solid rgba(27, 94, 32, 
   .btn-row .btn { flex: 1 1 auto; }
   .filters select { flex: 1 1 140px; }
 }
+
+/* =====================================================
+   Theme toggle (both modes)
+   ===================================================== */
+.theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; padding: 0; border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.12); color: #fff; cursor: pointer;
+  transition: background 0.15s;
+}
+.theme-toggle:hover { background: rgba(255, 255, 255, 0.24); }
+.theme-toggle svg { width: 18px; height: 18px; }
+
+/* on the login page the toggle sits on the page background, not the green bar */
+.login-wrap { position: relative; }
+.login-theme { position: absolute; top: 16px; right: 16px; }
+.login-theme.theme-toggle { color: var(--text); background: transparent; border-color: var(--border); }
+.login-theme.theme-toggle:hover { background: var(--green-soft); }
+
+/* =====================================================
+   Dark mode
+   ===================================================== */
+:root[data-theme='dark'] {
+  --green: #2e7d32;
+  --green-dark: #388e3c;
+  --green-soft: #1c3121;
+  --bg: #0b140e;
+  --surface: #14221a;
+  --surface-2: #101c14;
+  --text: #e4efe6;
+  --muted: #94ad99;
+  --border: #25392a;
+  --link: #81c784;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+
+/* top bar: same flat full-width bar, just a deeper green */
+:root[data-theme='dark'] .topbar { background: #123417; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5); }
+
+/* links (scoped so the white nav links are not affected) */
+:root[data-theme='dark'] .content a { color: var(--link); }
+:root[data-theme='dark'] .login-card h1 { color: var(--link); }
+
+/* surfaces */
+:root[data-theme='dark'] .card,
+:root[data-theme='dark'] .stat,
+:root[data-theme='dark'] .live,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] textarea { background: var(--surface); }
+:root[data-theme='dark'] ::placeholder { color: var(--muted); opacity: 1; }
+
+/* buttons */
+:root[data-theme='dark'] .btn { background: var(--surface); color: var(--link); border-color: var(--border); }
+:root[data-theme='dark'] .btn:hover:not(:disabled) { background: var(--green-soft); }
+:root[data-theme='dark'] .btn-ghost { background: transparent; }
+:root[data-theme='dark'] .btn-primary { background: var(--green); border-color: var(--green); color: #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); }
+:root[data-theme='dark'] .btn-primary:hover:not(:disabled) { background: var(--green-dark); }
+:root[data-theme='dark'] .topbar .btn-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.6); background: transparent; }
+:root[data-theme='dark'] .topbar .btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
+
+/* status tiles */
+:root[data-theme='dark'] .stat { border-color: var(--border); }
+:root[data-theme='dark'] .stat-active { background: var(--green); border-color: var(--green); color: #fff; }
+
+/* tables */
+:root[data-theme='dark'] .table th { background: var(--surface-2); }
+:root[data-theme='dark'] .table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+
+/* messages */
+:root[data-theme='dark'] .notice { background: var(--green-soft); border-color: #2c4a32; }
+:root[data-theme='dark'] .error { background: #2a1517; border-color: #7a2f33; color: #f3b9b9; }
+:root[data-theme='dark'] .error-text { color: #ef9a9a; }
+:root[data-theme='dark'] .warn { background: #251b2b; border-color: #6a4a78; }
+
+/* timeline */
+:root[data-theme='dark'] .timeline li { border-left-color: #2c4a32; }
+:root[data-theme='dark'] .timeline li::before { background: var(--link); }
+
+/* badges: translucent fill, lighter text */
+:root[data-theme='dark'] .s-SUBMITTED,
+:root[data-theme='dark'] .u-LOW,
+:root[data-theme='dark'] .s-CLOSED { color: #b0bec5; background: rgba(144, 164, 174, 0.16); border-color: rgba(144, 164, 174, 0.45); }
+:root[data-theme='dark'] .s-UNDER_REVIEW,
+:root[data-theme='dark'] .u-HIGH { color: #ffb74d; background: rgba(255, 152, 0, 0.14); border-color: rgba(255, 183, 77, 0.5); }
+:root[data-theme='dark'] .s-ASSIGNED { color: #9fa8da; background: rgba(121, 134, 203, 0.18); border-color: rgba(121, 134, 203, 0.55); }
+:root[data-theme='dark'] .s-IN_PROGRESS { color: #ffd54f; background: rgba(255, 202, 40, 0.13); border-color: rgba(255, 202, 40, 0.5); }
+:root[data-theme='dark'] .s-COMPLETED { color: #81c784; background: rgba(102, 187, 106, 0.14); border-color: rgba(102, 187, 106, 0.5); }
+:root[data-theme='dark'] .s-DELAYED { color: #ce93d8; background: rgba(186, 104, 200, 0.16); border-color: rgba(186, 104, 200, 0.5); }
+:root[data-theme='dark'] .u-MEDIUM { color: #90caf9; background: rgba(100, 181, 246, 0.14); border-color: rgba(100, 181, 246, 0.5); }
+:root[data-theme='dark'] .u-CRITICAL { color: #ef9a9a; background: rgba(239, 83, 80, 0.16); border-color: rgba(239, 83, 80, 0.55); }
+
+/* =====================================================
+   Custom dropdown arrow (nudged in from the edge)
+   Keep this block LAST: the dark surface rule above resets
+   the background shorthand and would hide the arrow otherwise.
+   ===================================================== */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%235f7d63' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 38px;
+}
+
+/* pill-shaped filter dropdowns need a bit more room from the rounded edge */
+.filters select {
+  background-position: right 20px center;
+  padding-right: 46px;
+}
+
+/* dark mode: lighter arrow, and re-apply the position because the
+   dark surface rule resets the background shorthand */
+:root[data-theme='dark'] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%2394ad99' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+:root[data-theme='dark'] .filters select {
+  background-position: right 20px center;
+}

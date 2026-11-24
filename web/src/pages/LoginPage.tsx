@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { errorMessage } from '../api';
+import { ThemeToggle } from '../theme';
 
 export default function LoginPage() {
   const { user, login } = useAuth();
@@ -30,6 +31,7 @@ export default function LoginPage() {
 
   return (
     <div className="login-wrap">
+      <ThemeToggle className="login-theme" />
       <form className="card login-card" onSubmit={submit}>
         <h1>FACILITRACK</h1>
         <p className="muted">Coordinator dashboard · CvSU Imus Campus</p>

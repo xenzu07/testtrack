@@ -1,6 +1,7 @@
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './auth';
 import { useLiveStatus } from './socket';
+import { ThemeToggle } from './theme';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -23,6 +24,7 @@ export default function Layout() {
             <span className={`dot ${live ? 'on' : ''}`} />
             {live ? 'Live' : 'Offline'}
           </span>
+          <ThemeToggle />
           {user.fullName}
           <button className="btn btn-ghost" onClick={logout}>
             Sign out
