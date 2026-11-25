@@ -112,7 +112,6 @@ class _AssignmentSheetState extends State<_AssignmentSheet> {
               const SizedBox(height: 8),
               Wrap(spacing: 8, runSpacing: 4, children: [
                 PriorityPill(r['priority'] as String?),
-                UrgencyPill(r['urgency']),
                 Pill(j['jobOrderNo'], context.c.muted, icon: Icons.receipt_long),
                 if (isOverdue(j)) Pill('Overdue', context.c.danger, icon: Icons.warning_amber),
               ]),

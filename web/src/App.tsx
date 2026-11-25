@@ -15,6 +15,7 @@ import FormsPage from './pages/FormsPage';
 import FormDetailPage from './pages/FormDetailPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import TechnicianAnalyticsPage from './pages/TechnicianAnalyticsPage';
+import { NotificationsPage } from './notifications';
 
 // the API enforces roles; this only keeps other roles off admin-only screens
 function AdminOnly({ children }: { children: ReactNode }) {
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="/forms" element={<FormsPage />} />
               <Route path="/forms/:id" element={<FormDetailPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
               <Route path="/analytics/technicians/:id" element={<TechnicianAnalyticsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reports/:id" element={<ReportDetailPage />} />

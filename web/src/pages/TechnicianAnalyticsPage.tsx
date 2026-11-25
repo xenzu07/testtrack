@@ -100,7 +100,7 @@ export default function TechnicianAnalyticsPage() {
           <span className="kpi-label">Completion rate</span>
           <strong className="kpi-value">{pct(j.completionRate)}</strong>
           <span className="kpi-sub">
-            of {j.acceptedInPeriod} job(s) accepted in this period
+            of {j.acceptedInPeriod} {j.acceptedInPeriod === 1 ? 'job' : 'jobs'} accepted in this period
           </span>
         </div>
         <div className="kpi">

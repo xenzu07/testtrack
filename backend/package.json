@@ -31,7 +31,8 @@
     "priority:backfill": "ts-node scripts/backfill-priority.ts",
     "db:merge-duplicates": "prisma db execute --file prisma/sql/005_merge_duplicate_job_orders.sql --schema prisma/schema.prisma",
     "duplicates:reconcile": "ts-node scripts/reconcile-duplicates.ts",
-    "db:phase6": "prisma db execute --file prisma/sql/006_phase6_job_order_forms.sql --schema prisma/schema.prisma"
+    "db:phase6": "prisma db execute --file prisma/sql/006_phase6_job_order_forms.sql --schema prisma/schema.prisma",
+    "db:phase8": "prisma db execute --file prisma/sql/007_phase8_notifications.sql --schema prisma/schema.prisma"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -52,7 +53,8 @@
     "pdfkit": "^0.20.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "socket.io": "^4.8.4"
+    "socket.io": "^4.8.4",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
@@ -67,6 +69,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/pdfkit": "^0.17.7",
     "@types/supertest": "^7.0.0",
+    "@types/web-push": "^3.6.4",
     "jest": "^30.0.0",
     "oxlint": "^1.58.0",
     "oxlint-tsgolint": "^7.0.2001",

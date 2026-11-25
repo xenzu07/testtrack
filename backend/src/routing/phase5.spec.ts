@@ -1,13 +1,12 @@
 import { ConflictException } from '@nestjs/common';
 import { DuplicateStatus } from '@prisma/client';
-import { levelFor, scorePriority } from '../priority/priority-scoring';
+import { URGENCY_FOR_LEVEL, levelFor, scorePriority } from '../priority/priority-scoring';
 import { PriorityService } from '../priority/priority.service';
 import { similarity, tokens } from '../duplicates/duplicate-detection';
 import { DuplicatesService } from '../duplicates/duplicates.service';
 import { rankTechnicians, recommended } from './assignment-recommender';
 
 const base = {
-  urgency: 'MEDIUM' as const,
   categorySeverity: 2,
   affectedPeople: 0,
   safetyHazard: false,
@@ -15,14 +14,16 @@ const base = {
   corroboratingReports: 0,
 };
 
-describe('priority scoring', () => {
+describe('priority scoring (system-set; the reporter chooses no urgency)', () => {
   it('matches the documented examples', () => {
-    const wiring = scorePriority({ ...base, urgency: 'HIGH', categorySeverity: 4, safetyHazard: true, affectedPeople: 2 });
+    const wiring = scorePriority({ ...base, categorySeverity: 4, safetyHazard: true, affectedPeople: 2 });
     expect([wiring.score, wiring.level]).toEqual([70, 'P1']);
     const leak = scorePriority({ ...base, categorySeverity: 3, blocksUse: true, affectedPeople: 1 });
     expect([leak.score, leak.level]).toEqual([42, 'P3']);
-    const chair = scorePriority({ ...base, urgency: 'LOW', categorySeverity: 1 });
-    expect([chair.score, chair.level]).toEqual([10, 'P4']);
+    const toilet = scorePriority({ ...base, categorySeverity: 3, blocksUse: true, affectedPeople: 3 });
+    expect([toilet.score, toilet.level]).toEqual([52, 'P2']);
+    const chair = scorePriority({ ...base, categorySeverity: 1 });
+    expect([chair.score, chair.level]).toEqual([6, 'P4']);
   });
 
   it('uses the level thresholds 70 / 50 / 30', () => {
@@ -31,30 +32,33 @@ describe('priority scoring', () => {
   });
 
   it('never puts a safety hazard below P2', () => {
-    const r = scorePriority({ ...base, urgency: 'LOW', categorySeverity: 1, safetyHazard: true });
-    expect(r.score).toBe(30);
+    const r = scorePriority({ ...base, categorySeverity: 1, safetyHazard: true });
+    expect(r.score).toBe(36);
     expect(r.level).toBe('P2');
   });
 
   it('caps at 100 and counts confirmed duplicate reports', () => {
-    const max = { ...base, urgency: 'CRITICAL' as const, categorySeverity: 4, safetyHazard: true, blocksUse: true, affectedPeople: 3 };
+    const max = { ...base, categorySeverity: 4, safetyHazard: true, blocksUse: true, affectedPeople: 3 };
     expect(scorePriority({ ...max, corroboratingReports: 9 }).score).toBe(100);
-    expect(scorePriority({ ...base, corroboratingReports: 1 }).score - scorePriority(base).score).toBe(3);
-    expect(scorePriority({ ...base, corroboratingReports: 4 }).score - scorePriority(base).score).toBe(5);
+    expect(scorePriority({ ...base, corroboratingReports: 1 }).score - scorePriority(base).score).toBe(5);
+    expect(scorePriority({ ...base, corroboratingReports: 4 }).score - scorePriority(base).score).toBe(10);
   });
 
-  it('flags results a person should check', () => {
-    expect(scorePriority({ ...base, affectedPeople: null }).flags).toContain('impact_missing');
-    expect(scorePriority({ ...base, urgency: 'CRITICAL' }).flags).toContain('urgency_overstated');
-    expect(scorePriority({ ...base, urgency: 'LOW', safetyHazard: true }).flags).toContain('hazard_low_urgency');
-    expect(scorePriority({ ...base, urgency: 'LOW', categorySeverity: 4 }).flags).toContain('dangerous_category_low_urgency');
+  it('asks for a check only when the impact answers are missing', () => {
+    expect(scorePriority({ ...base, affectedPeople: null }).flags).toEqual(['impact_missing']);
+    expect(scorePriority({ ...base, categorySeverity: 4, safetyHazard: true }).flags).toEqual([]);
     expect(scorePriority(base).flags).toEqual([]);
   });
 
-  it('explains itself: factor points add up to the score', () => {
-    const r = scorePriority({ ...base, urgency: 'HIGH', categorySeverity: 3, blocksUse: true, affectedPeople: 3 });
+  it('explains itself: factor points add up to the score, and there is no urgency factor', () => {
+    const r = scorePriority({ ...base, categorySeverity: 3, blocksUse: true, affectedPeople: 3 });
     expect(r.factors.reduce((s, f) => s + f.points, 0)).toBe(r.score);
     expect(r.factors.map((f) => f.max).reduce((a, b) => a + b, 0)).toBe(100);
+    expect(r.factors.map((f) => f.key)).not.toContain('urgency');
+  });
+
+  it('writes the same level as the urgency word', () => {
+    expect(URGENCY_FOR_LEVEL).toEqual({ P1: 'CRITICAL', P2: 'HIGH', P3: 'MEDIUM', P4: 'LOW' });
   });
 });
 
@@ -192,7 +196,7 @@ describe('DuplicatesService.decide', () => {
       },
       $transaction: jest.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
     };
-    const svc = new DuplicatesService(prisma as never, {} as never, {} as never);
+    const svc = new DuplicatesService(prisma as never, {} as never, {} as never, { emit: jest.fn(), emitPriorityReview: jest.fn() } as never);
     await expect(svc.decide('r2', 'f1', 'c1', 'dismiss')).rejects.toBeInstanceOf(ConflictException);
   });
 });

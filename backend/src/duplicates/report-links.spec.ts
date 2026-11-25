@@ -161,7 +161,7 @@ describe('JobOrdersService.create', () => {
         }),
       },
     };
-    const svc = new JobOrdersService(prisma as never, {} as never, {} as never, {} as never);
+    const svc = new JobOrdersService(prisma as never, {} as never, {} as never, {} as never, { emit: jest.fn(), emitPriorityReview: jest.fn() } as never);
     await expect(svc.create('coord', { reportId: 'copy' })).rejects.toThrow(/linked to another report/);
   });
 });

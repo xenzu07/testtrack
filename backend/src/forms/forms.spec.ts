@@ -139,7 +139,7 @@ describe('FormsService rules', () => {
     };
     const storage = { uploadImage: jest.fn(), removeQuietly: jest.fn(), signUrls: jest.fn().mockResolvedValue(new Map()) };
     const jwt = { signAsync: jest.fn().mockResolvedValue('tok'), verifyAsync: jest.fn() };
-    return { svc: new FormsService(prisma as never, storage as never, {} as never, jwt as never), prisma, storage, jwt };
+    return { svc: new FormsService(prisma as never, storage as never, {} as never, jwt as never, { emit: jest.fn(), emitPriorityReview: jest.fn() } as never), prisma, storage, jwt };
   };
   const dto = { ...valid, certified: true } as SubmitFormDto;
   const file = (buf: Buffer) => ({ buffer: buf, size: buf.length }) as Express.Multer.File;

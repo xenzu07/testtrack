@@ -119,6 +119,8 @@ export class AuthService {
         tokenVersion: { increment: 1 },
       },
     });
+    // other devices stop getting pushes; this one registers again
+    await this.prisma.pushDevice.deleteMany({ where: { userId } });
     return { accessToken: await this.issueToken(updated) };
   }
 
@@ -128,6 +130,7 @@ export class AuthService {
       where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
     });
+    await this.prisma.pushDevice.deleteMany({ where: { userId } });
     return { ok: true };
   }
 }

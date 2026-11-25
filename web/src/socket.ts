@@ -73,3 +73,21 @@ export function useLiveStatus(): boolean {
 
   return live;
 }
+// runs the callback for one named server event (e.g. 'notification.new');
+// the server only sends a user their own notifications
+export function useSocketEvent<T>(name: string, onEvent: (payload: T) => void) {
+  const handler = useRef(onEvent);
+  useEffect(() => {
+    handler.current = onEvent;
+  });
+
+  useEffect(() => {
+    const s = getSocket();
+    if (!s) return undefined;
+    const listener = (p: T) => handler.current(p);
+    s.on(name, listener);
+    return () => {
+      s.off(name, listener);
+    };
+  }, [name]);
+}

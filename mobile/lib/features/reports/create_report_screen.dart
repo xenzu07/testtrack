@@ -1,11 +1,9 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/api_client.dart';
-import '../../core/format.dart';
 import 'dart:typed_data';
 
 class CreateReportScreen extends StatefulWidget {
@@ -20,7 +18,6 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
 
   List<Map<String, dynamic>> locations = [];
   List<Map<String, dynamic>> categories = [];
-  List<String> urgencies = [];
   bool loading = true;
   bool submitting = false;
   String? loadError;
@@ -29,7 +26,6 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   String? floor;
   String? locationId;
   String? categoryId;
-  String urgency = 'MEDIUM';
   // impact questions (used for the priority score; all three are required)
   int? affectedPeople; // 0 just me, 1 = 2-10, 2 = 11-50, 3 = more than 50
   bool? safetyHazard;
@@ -59,22 +55,22 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       final res = await ApiClient.instance.dio.get('/reports/options');
       locations = List<Map<String, dynamic>>.from(res.data['locations']);
       categories = List<Map<String, dynamic>>.from(res.data['categories']);
-      urgencies = List<String>.from(res.data['urgencies']);
     } catch (e) {
       loadError = errorMessage(e);
     }
     if (mounted) setState(() => loading = false);
   }
 
+  // the server sends locations in natural order ("LR 5" before "LR 10");
+  // toSet keeps that order, so the lists are not re-sorted here
   List<String> get buildings =>
-      (locations.map((l) => l['building'] as String).toSet().toList()..sort());
+      locations.map((l) => l['building'] as String).toSet().toList();
 
-  List<String> get floors => (locations
+  List<String> get floors => locations
       .where((l) => l['building'] == building)
       .map((l) => l['floor'] as String)
       .toSet()
-      .toList()
-    ..sort());
+      .toList();
 
   List<Map<String, dynamic>> get rooms => locations
       .where((l) => l['building'] == building && l['floor'] == floor)
@@ -126,7 +122,6 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       final form = FormData.fromMap({
         'locationId': locationId,
         'categoryId': categoryId,
-        'urgency': urgency,
         'affectedPeople': affectedPeople,
         'safetyHazard': safetyHazard,
         'blocksUse': usable == null ? null : !usable!,
@@ -193,20 +188,24 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
     );
   }
 
-  String _urgencyHint(String u) {
-    switch (u) {
-      case 'CRITICAL':
-        return 'Danger to people or property right now (exposed wiring, flooding).';
-      case 'HIGH':
-        return 'Stops a room or facility from being used.';
-      case 'LOW':
-        return 'Minor or cosmetic; can wait.';
-      default:
-        return 'Needs fixing soon but the area can still be used.';
-    }
-  }
-
   InputDecoration _dec(String label) => InputDecoration(labelText: label);
+
+  // long room names (e.g. "Department of Management Office Administration
+  // Cluster") wrap to two lines instead of overflowing a narrow phone
+  Widget _option(String text) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis),
+      );
+
+  // the closed field has room for one line: the chosen value is shown on one
+  // line, shortened with "..." if needed (the open list keeps two lines)
+  List<Widget> Function(BuildContext) _selected(List<String> labels) => (_) => [
+        for (final l in labels)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false),
+          ),
+      ];
 
   @override
   Widget build(BuildContext context) {
@@ -237,9 +236,12 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                     DropdownButtonFormField<String>(
                       value: building,
+                      isExpanded: true,
+                      itemHeight: null,
                       decoration: _dec('Building'),
+                      selectedItemBuilder: _selected(buildings),
                       items: buildings
-                          .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+                          .map((b) => DropdownMenuItem(value: b, child: _option(b)))
                           .toList(),
                       onChanged: (v) => setState(() {
                         building = v;
@@ -251,9 +253,12 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                     DropdownButtonFormField<String>(
                       key: ValueKey('floor-$building'),
                       value: floor,
+                      isExpanded: true,
+                      itemHeight: null,
                       decoration: _dec('Floor'),
+                      selectedItemBuilder: _selected(floors),
                       items: floors
-                          .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                          .map((f) => DropdownMenuItem(value: f, child: _option(f)))
                           .toList(),
                       onChanged: building == null
                           ? null
@@ -266,16 +271,29 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                     DropdownButtonFormField<String>(
                       key: ValueKey('room-$building-$floor'),
                       value: locationId,
+                      isExpanded: true,
+                      itemHeight: null,
                       decoration: _dec('Room'),
+                      selectedItemBuilder: _selected([for (final l in rooms) l['room'] as String]),
                       items: rooms
                           .map((l) => DropdownMenuItem(
                               value: l['id'] as String,
-                              child: Text(l['room'] as String)))
+                              child: _option(l['room'] as String)))
                           .toList(),
                       onChanged: floor == null
                           ? null
                           : (v) => setState(() => locationId = v),
                     ),
+                    // long room names are shortened in the field; the full
+                    // place is spelled out here so the reporter can check it
+                    if (locationId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, left: 4),
+                        child: Text(
+                          '$building · $floor · ${rooms.firstWhere((l) => l['id'] == locationId, orElse: () => {'room': ''})['room']}',
+                          style: TextStyle(color: context.c.muted, fontSize: 13),
+                        ),
+                      ),
                       ]),
                     ),
                     SectionCard(
@@ -284,11 +302,13 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                     DropdownButtonFormField<String>(
                       value: categoryId,
                       isExpanded: true,
+                      itemHeight: null,
                       decoration: _dec('Issue category'),
+                      selectedItemBuilder: _selected([for (final c in categories) c['name'] as String]),
                       items: categories
                           .map((c) => DropdownMenuItem(
                               value: c['id'] as String,
-                              child: Text(c['name'] as String)))
+                              child: _option(c['name'] as String)))
                           .toList(),
                       onChanged: (v) => setState(() => categoryId = v),
                     ),
@@ -304,8 +324,10 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                       maxLines: 4,
                       maxLength: 2000,
                       onChanged: (_) => setState(() {}),
-                      decoration: _dec('Description (at least 5 characters)')
+                      decoration: _dec('Description')
                           .copyWith(
+                              helperText: 'At least 5 characters',
+                              hintMaxLines: 3,
                               hintText:
                                   'What is wrong, and since when? Example: Ceiling light flickers and buzzes'),
                     ),
@@ -361,23 +383,8 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                     SectionCard(
                       title: 'How serious is it?',
                       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                        Text('Your answers help the GSO decide what to fix first.', style: TextStyle(color: context.c.muted, fontSize: 13.5)),
+                        Text('The system sets the priority from these answers, so the most serious problems are fixed first.', style: TextStyle(color: context.c.muted, fontSize: 13.5)),
                         const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      value: urgency,
-                      decoration: _dec('Urgency'),
-                      items: urgencies
-                          .map((u) => DropdownMenuItem(
-                              value: u, child: Text(urgencyLabel(u))))
-                          .toList(),
-                      onChanged: (v) => setState(() => urgency = v ?? 'MEDIUM'),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6, left: 4),
-                      child: Text(_urgencyHint(urgency),
-                          style: TextStyle(color: context.c.muted, fontSize: 12)),
-                    ),
-                    const SizedBox(height: 18),
                     _question(
                       'How many people are affected?',
                       [

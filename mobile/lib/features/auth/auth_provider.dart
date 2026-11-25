@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/api_client.dart';
 import '../../core/nav.dart';
 import '../../core/realtime.dart';
+import '../../core/push.dart';
 
 class AuthUser {
   final String id;
@@ -69,6 +70,7 @@ class AuthProvider extends ChangeNotifier {
       Realtime.instance.connect();
       user = AuthUser.fromJson(jsonDecode(saved));
       refreshProfile();
+      PushService.instance.register();
     }
     loading = false;
     notifyListeners();
@@ -94,6 +96,7 @@ class AuthProvider extends ChangeNotifier {
     Realtime.instance.connect();
     notifyListeners();
     refreshProfile();
+    PushService.instance.register();
   }
 
   // name changes and the trade unit come from the server; failures are
@@ -129,6 +132,8 @@ class AuthProvider extends ChangeNotifier {
     await prefs.setString('token', token);
     ApiClient.instance.token = token;
     Realtime.instance.connect();
+    // the server dropped this account's devices with the old sessions
+    PushService.instance.register();
   }
 
   Future<void> logoutEverywhere() async {
@@ -137,6 +142,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // this phone stops receiving the account's pushes
+    await PushService.instance.unregister();
     Realtime.instance.disconnect();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');

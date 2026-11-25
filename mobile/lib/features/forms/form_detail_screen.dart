@@ -157,7 +157,7 @@ class _FormDetailScreenState extends State<FormDetailScreen> {
         _row('Department', f['department']),
         _row('Contact', f['contactNumber']),
         _row('Location', f['locationText']),
-        _row('Urgency', urgencyLabel(f['urgency'])),
+        _row('Priority', urgencyLabel(f['urgency'])),
         _row('Schedule', f['preferredSchedule'] ?? 'Any time'),
         _row('Work requested', f['workRequested']),
         if (f['notes'] != null) _row('Notes', f['notes']),

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api, errorMessage } from '../api';
 import { formatDateTime } from '../format';
 import { useRealtime } from '../socket';
-import { ErrorBox, Flag, FormStatusBadge, UrgencyBadge } from '../ui';
+import { ErrorBox, Flag, FormStatusBadge, UrgencyAsPriority } from '../ui';
 import type { JobOrderFormView } from '../types';
 
 export default function FormDetailPage() {
@@ -80,7 +80,7 @@ export default function FormDetailPage() {
           </p>
         </div>
         <div className="head-badges">
-          <UrgencyBadge urgency={form.urgency} />
+          <UrgencyAsPriority urgency={form.urgency} />
           <FormStatusBadge status={form.status} />
         </div>
       </div>
@@ -172,15 +172,15 @@ export default function FormDetailPage() {
 
             {open && !mode && (
               <div className="btn-row">
+                <button className="btn btn-primary" disabled={busy} onClick={() => setMode('approve')}>
+                  Approve
+                </button>
                 {form.status === 'SUBMITTED' && (
                   <button className="btn" disabled={busy} onClick={() => void act('receive')}>
                     Mark received
                   </button>
                 )}
-                <button className="btn btn-primary" disabled={busy} onClick={() => setMode('approve')}>
-                  Approve
-                </button>
-                <button className="btn" disabled={busy} onClick={() => setMode('return')}>
+                <button className="btn btn-ghost" disabled={busy} onClick={() => setMode('return')}>
                   Return for changes
                 </button>
               </div>

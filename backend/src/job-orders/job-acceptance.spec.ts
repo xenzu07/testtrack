@@ -39,7 +39,7 @@ function setup(opts: { job?: object; updated?: number; lastMine?: AssignmentStat
     $transaction: jest.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
   };
   const events = { statusChanged: jest.fn() };
-  const svc = new JobOrdersService(prisma as never, events as never, {} as never, {} as never);
+  const svc = new JobOrdersService(prisma as never, events as never, {} as never, {} as never, { emit: jest.fn(), emitPriorityReview: jest.fn() } as never);
   return { svc, tx, prisma, events };
 }
 
@@ -127,7 +127,7 @@ describe('JobOrdersService.updateStatus guard', () => {
         findUnique: jest.fn().mockResolvedValue({ ...JOB, assignmentStatus: AssignmentStatus.PENDING }),
       },
     };
-    const svc = new JobOrdersService(prisma as never, {} as never, {} as never, {} as never);
+    const svc = new JobOrdersService(prisma as never, {} as never, {} as never, {} as never, { emit: jest.fn(), emitPriorityReview: jest.fn() } as never);
     await expect(
       svc.updateStatus('job1', 'tech1', { status: Status.IN_PROGRESS }),
     ).rejects.toThrow('Accept the job before starting work');

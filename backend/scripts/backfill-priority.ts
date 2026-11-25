@@ -16,10 +16,26 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { PriorityService } from '../src/priority/priority.service';
 import { DuplicatesService } from '../src/duplicates/duplicates.service';
 import { scorePriority } from '../src/priority/priority-scoring';
+import { EventsGateway } from '../src/events/events.gateway';
+import { NotificationsService } from '../src/notifications/notifications.service';
+
+// Re-scoring old data must not message anyone: live updates and
+// notifications are replaced by silent stand-ins.
+const silent = {
+  statusChanged: () => undefined,
+  notification: () => undefined,
+  emit: () => undefined,
+  emitPriorityReview: () => undefined,
+};
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), PrismaModule],
-  providers: [PriorityService, DuplicatesService],
+  providers: [
+    PriorityService,
+    DuplicatesService,
+    { provide: EventsGateway, useValue: silent },
+    { provide: NotificationsService, useValue: silent },
+  ],
 })
 class BackfillModule {}
 
@@ -38,7 +54,6 @@ async function main() {
     select: {
       id: true,
       status: true,
-      urgency: true,
       affectedPeople: true,
       safetyHazard: true,
       blocksUse: true,
@@ -52,7 +67,6 @@ async function main() {
   for (const r of reports) {
     if (dryRun) {
       const res = scorePriority({
-        urgency: r.urgency,
         categorySeverity: r.category.severity,
         affectedPeople: r.affectedPeople,
         safetyHazard: r.safetyHazard,

@@ -1,5 +1,6 @@
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { printSummary, syncLocations } from './location-sync';
 
 const prisma = new PrismaClient();
 
@@ -32,17 +33,8 @@ async function main() {
     });
   }
 
-  // sample locations: replace with real ones from the GSO
-  for (const building of ['Main Building', 'Science Building']) {
-    for (const floor of ['1st Floor', '2nd Floor']) {
-      for (const room of ['Room 101', 'Room 102', 'Restroom']) {
-        await prisma.location.upsert({
-          where: { building_floor_room: { building, floor, room } },
-          update: {}, create: { building, floor, room },
-        });
-      }
-    }
-  }
+  // campus locations (prisma/locations-data.ts); retires the old sample ones
+  printSummary(await syncLocations(prisma, { apply: true }), true);
 
   const hash = await bcrypt.hash('password123', 10);
   const users: { fullName: string; email: string; role: Role; userType?: string; unit?: string }[] = [

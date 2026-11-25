@@ -30,8 +30,11 @@ export class CreateReportDto {
   @IsUUID()
   categoryId: string;
 
+  // Ignored: the system sets the urgency/priority. Still accepted so phones
+  // with an older app version (which send it) can keep submitting reports.
+  @IsOptional()
   @IsEnum(Urgency)
-  urgency: Urgency;
+  urgency?: Urgency;
 
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()

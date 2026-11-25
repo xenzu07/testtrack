@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '../api';
-import { PRIORITY_LABEL, urgencyLabel } from '../format';
+import { PRIORITY_LABEL } from '../format';
 import { useRealtime } from '../socket';
 import { ErrorBox, RefreshButton } from '../ui';
 import { ChartCard, HBarList, LineChart, SegmentedBar, bucketLabel, formatHours, pct } from '../charts';
@@ -296,8 +296,6 @@ export default function AnalyticsPage() {
                   count: p.count,
                 }))}
               />
-              <h3 className="small-head">Reporter urgency</h3>
-              <HBarList items={data.byUrgency.map((u) => ({ label: urgencyLabel(u.label), count: u.count }))} />
             </ChartCard>
           </div>
 

@@ -12,9 +12,6 @@ export const priorityRank = (p: PriorityLevel | null | undefined) => (p ? PRIORI
 
 export const REVIEW_FLAG_LABEL: Record<ReviewFlagCode, string> = {
   impact_missing: 'Impact questions were not answered (older app version)',
-  urgency_overstated: 'Marked Critical, but no hazard, the area is usable and the category is minor',
-  hazard_low_urgency: 'Safety hazard reported, but urgency was set to Low',
-  dangerous_category_low_urgency: 'Usually dangerous kind of problem, but urgency was set to Low',
   possible_duplicate: 'May be the same problem as another report',
 };
 
@@ -28,6 +25,15 @@ export const STATUSES: Status[] = [
   'CLOSED',
 ];
 export const URGENCIES: Urgency[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+// Urgency and priority are one system-set level; signed forms store it as an
+// urgency word, shown here as the matching priority.
+export const PRIORITY_FROM_URGENCY: Record<Urgency, PriorityLevel> = {
+  CRITICAL: 'P1',
+  HIGH: 'P2',
+  MEDIUM: 'P3',
+  LOW: 'P4',
+};
 
 export function statusLabel(s: string): string {
   return s

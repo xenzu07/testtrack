@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { api, setUnauthorizedHandler, TOKEN_KEY, USER_KEY } from './api';
 import type { Role } from './types';
 import { closeSocket } from './socket';
+import { unsubscribeBrowser } from './notifications';
 
 export interface AuthUser {
   id: string;
@@ -43,6 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(readStoredUser);
 
   const logout = useCallback(() => {
+    // this browser stops getting the account's pushes (best effort)
+    void unsubscribeBrowser(sessionStorage.getItem(TOKEN_KEY));
     closeSocket();
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_KEY);
@@ -75,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const replaceToken = useCallback((token: string) => {
     sessionStorage.setItem(TOKEN_KEY, token);
     closeSocket(); // reconnects with the new token on next use
+    window.dispatchEvent(new Event('facilitrack:session-renewed'));
   }, []);
 
   const logoutEverywhere = useCallback(async () => {

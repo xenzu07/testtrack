@@ -90,6 +90,9 @@ export class UsersService {
       role !== user.role || (dto.isActive === false && user.isActive);
 
     try {
+      // pushes stop with the sessions: a deactivated or re-roled account must
+      // not keep receiving another role's notifications
+      if (endSessions) await this.prisma.pushDevice.deleteMany({ where: { userId: id } });
       return await this.prisma.user.update({
         where: { id },
         data: {
@@ -124,6 +127,7 @@ export class UsersService {
         tokenVersion: { increment: 1 },
       },
     });
+    await this.prisma.pushDevice.deleteMany({ where: { userId: id } });
     return { ok: true };
   }
 }

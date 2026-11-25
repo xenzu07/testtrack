@@ -36,9 +36,9 @@ Reporter (mobile)      Coordinator (web)        Technician (mobile)
       |                       |                         |
  1. Submit report             |                         |
     + location, category,     |                         |
-    urgency, required photo   |                         |
+    impact answers, photo     |                         |
       |                       |                         |
-      |---- system proposes a trade unit from the category (rule-based) ----|
+      |---- system sets the priority and proposes a trade unit ------------|
       |                       |                         |
       |                2. Review report                 |
       |                   confirm or reassign           |
@@ -56,7 +56,7 @@ Every status change is written to the `StatusLog` table, so each report has a co
 
 **Status flow:** `SUBMITTED → UNDER_REVIEW → ASSIGNED → IN_PROGRESS → COMPLETED`
 
-**Urgency levels:** `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`
+**Priority (set by the system):** `P1` Critical, `P2` High, `P3` Medium, `P4` Low. Reporters do not choose an urgency; the priority is calculated from the category's severity and the reporter's answers about safety hazards, whether the room can still be used, and how many people are affected, plus confirmed duplicate reports (see `src/priority/priority-scoring.ts`). Urgency and priority are one value: the report's `urgency` field (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) always matches the priority.
 
 **Roles:**
 
@@ -171,7 +171,18 @@ npx prisma generate
 npx prisma db seed
 ```
 
-The seed creates the 8 trade units, 11 issue categories, 12 sample locations, and the test accounts listed below. It is safe to run more than once.
+The seed creates the 8 trade units, 11 issue categories, the 121 campus locations, and the test accounts listed below. It is safe to run more than once.
+
+#### Campus locations
+
+The buildings, floors and rooms shown in the mobile report form come from `prisma/locations-data.ts` (121 locations in 7 buildings). To bring an existing database in line with that file, for example after editing it, run from `backend`:
+
+```bash
+npx ts-node prisma/sync-locations.ts          # dry run: prints what would change, writes nothing
+npx ts-node prisma/sync-locations.ts --apply  # makes the changes in one transaction
+```
+
+It creates missing locations and reactivates listed ones that were turned off. Old sample locations (Main Building, Science Building) are deleted when no report uses them; if reports do, they are kept but marked inactive, so old reports keep their location while the report form stops offering them. Other locations are left alone, and running it again changes nothing. It prints the database host it is using before doing anything.
 
 ### 4. Web dashboard
 
@@ -306,8 +317,8 @@ Base URL: `http://localhost:3000`. All routes except login need the header `Auth
 
 | Method | Route | Roles | Description |
 |---|---|---|---|
-| GET | `/reports/options` | any | Categories (with default trade unit), locations, urgency values |
-| POST | `/reports` | Reporter | Multipart form: `locationId`, `categoryId`, `urgency`, `description`, `photo` (required, image only, max 5 MB) |
+| GET | `/reports/options` | any | Categories (with default trade unit) and active locations |
+| POST | `/reports` | Reporter | Multipart form: `locationId`, `categoryId`, `description`, `affectedPeople`, `safetyHazard`, `blocksUse`, `photo` (required, image only, max 5 MB). The priority is set by the system; an `urgency` sent by older app versions is ignored |
 | GET | `/reports/mine` | Reporter | The current user's reports |
 | GET | `/reports` | Coordinator, Admin | All reports. Filters: `?status=`, `?urgency=`, `?categoryId=` |
 | GET | `/reports/:id` | Owner, Coordinator, Admin | One report with photos, job order, and status history |
@@ -366,7 +377,7 @@ The backend runs a Socket.IO gateway on the same port as the API.
 | `TradeUnit` | Electrical, Carpentry, Plumbing, Welding, Masonry, Painting, Mechanical, Utility |
 | `IssueCategory` | Each category has a default trade unit. This is the routing rule |
 | `Location` | Building, floor, and room (unique combination) |
-| `Report` | The facility issue, with urgency, status, and the proposed trade unit |
+| `Report` | The facility issue, with its system-set priority (and matching urgency), status, and the proposed trade unit |
 | `ReportPhoto` | One or more photos per report |
 | `JobOrder` | `jobOrderNo`, trade unit, technician, optional materials note and target date, status |
 | `StatusLog` | One row per change: old status, new status, remarks, who changed it, when |
@@ -380,7 +391,7 @@ The full schema is in `backend/prisma/schema.prisma`.
 ### Done
 
 - Login and role-based access control (reporter, technician, coordinator, admin)
-- Report submission with required photo, location, category, and urgency
+- Report submission with required photo, location, category, and impact questions; the priority is set by the system
 - Rule-based routing from category to trade unit, with coordinator confirm or reassign
 - Digital job order generation with unique sequential numbers
 - Technician assignment and reassignment, with the previous technician named in the history

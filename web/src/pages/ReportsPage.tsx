@@ -3,14 +3,12 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '../api';
 import {
   STATUSES,
-  URGENCIES,
-  URGENCY_RANK,
+  PRIORITY_LABEL,
   lastActivity,
   locationText,
   priorityRank,
   statusLabel,
   timeAgo,
-  urgencyLabel,
 } from '../format';
 import {
   AssignmentFlag,
@@ -22,10 +20,10 @@ import {
   RefreshButton,
   StatusBadge,
 } from '../ui';
-import type { Report, ReportOptions, Status, Urgency } from '../types';
+import type { PriorityLevel, Report, ReportOptions, Status } from '../types';
 import { useRealtime } from '../socket';
 
-type Sort = 'priority' | 'newest' | 'oldest' | 'urgency' | 'activity';
+type Sort = 'priority' | 'newest' | 'oldest' | 'activity';
 type TriageFlag = '' | 'review' | 'duplicate';
 
 export default function ReportsPage() {
@@ -39,7 +37,7 @@ export default function ReportsPage() {
   // filters live in the URL so the Overview tiles can link straight to them
   // and a filtered view can be bookmarked or shared
   const status = (params.get('status') ?? '') as Status | '';
-  const urgency = (params.get('urgency') ?? '') as Urgency | '';
+  const priority = (params.get('priority') ?? '') as PriorityLevel | '';
   const categoryId = params.get('category') ?? '';
   const sort = (params.get('sort') ?? 'priority') as Sort;
   const triage = (params.get('flag') ?? '') as TriageFlag;
@@ -89,7 +87,7 @@ export default function ReportsPage() {
     const list = reports.filter(
       (r) =>
         (!status || r.status === status) &&
-        (!urgency || r.urgency === urgency) &&
+        (!priority || r.priority === priority) &&
         (!categoryId || r.category.id === categoryId) &&
         (triage !== 'review' || r.needsReview) &&
         (triage !== 'duplicate' || (r._count?.duplicateFlags ?? 0) > 0) &&
@@ -112,15 +110,12 @@ export default function ReportsPage() {
         a.createdAt.localeCompare(b.createdAt),
       newest: (a, b) => b.createdAt.localeCompare(a.createdAt),
       oldest: (a, b) => a.createdAt.localeCompare(b.createdAt),
-      urgency: (a, b) =>
-        URGENCY_RANK[a.urgency] - URGENCY_RANK[b.urgency] ||
-        a.createdAt.localeCompare(b.createdAt),
       activity: (a, b) => lastActivity(b).localeCompare(lastActivity(a)),
     };
     return list.sort(by[sort] ?? by.newest);
-  }, [reports, status, urgency, categoryId, search, sort]);
+  }, [reports, status, priority, categoryId, search, sort]);
 
-  const filtered = Boolean(status || urgency || categoryId || search || triage);
+  const filtered = Boolean(status || priority || categoryId || search || triage);
 
   return (
     <div>
@@ -168,11 +163,11 @@ export default function ReportsPage() {
             setParam('q', e.target.value);
           }}
         />
-        <select value={urgency} onChange={(e) => setParam('urgency', e.target.value)}>
-          <option value="">All urgency levels</option>
-          {URGENCIES.map((u) => (
-            <option key={u} value={u}>
-              {urgencyLabel(u)}
+        <select value={priority} onChange={(e) => setParam('priority', e.target.value)} aria-label="Priority">
+          <option value="">All priorities</option>
+          {(['P1', 'P2', 'P3', 'P4'] as PriorityLevel[]).map((p) => (
+            <option key={p} value={p}>
+              {p} {PRIORITY_LABEL[p]}
             </option>
           ))}
         </select>
@@ -192,7 +187,6 @@ export default function ReportsPage() {
           <option value="priority">Highest priority first</option>
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
-          <option value="urgency">Most urgent first</option>
           <option value="activity">Recently updated</option>
         </select>
         {filtered && (

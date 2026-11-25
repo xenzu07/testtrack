@@ -11,6 +11,7 @@ import { FormStatus, JobOrderForm, Prisma, Role, Status } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PhotoStorageService } from '../storage/photo-storage.service';
 import { EventsGateway } from '../events/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { sniffImage } from '../storage/image-sniff';
 import { SubmitFormDto } from './dto/form.dto';
 import { contentHash, sha256 } from './form-integrity';
@@ -45,6 +46,7 @@ export class FormsService {
     private storage: PhotoStorageService,
     private events: EventsGateway,
     private jwt: JwtService,
+    private notifications: NotificationsService,
   ) {}
 
   // ------------------------------------------------------------ helpers
@@ -267,6 +269,7 @@ export class FormsService {
         },
         [userId],
       );
+      this.notifications.emit({ type: 'form.submitted', reportId: report.id, formId: form.id, actorId: userId });
       return this.present(await this.load(form.id), true);
     } catch (e) {
       await this.storage.removeQuietly(signaturePath);
@@ -431,6 +434,14 @@ export class FormsService {
       },
       [f.requesterId],
     );
+    this.notifications.emit({
+      type: 'form.decided',
+      reportId: f.reportId,
+      formId: f.id,
+      actorId: userId,
+      action,
+      note,
+    });
     return this.present(await this.load(id), true);
   }
 }

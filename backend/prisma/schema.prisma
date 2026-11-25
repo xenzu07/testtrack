@@ -37,6 +37,8 @@ model User {
   delaysReported      MaterialDelay[]      @relation("DelayReporter")
   delaysResolved      MaterialDelay[]      @relation("DelayResolver")
   reports             Report[]             @relation("Reporter")
+  notifications       Notification[]
+  pushDevices         PushDevice[]
   tradeUnit           TradeUnit?           @relation(fields: [tradeUnitId], references: [id])
 }
 
@@ -94,6 +96,8 @@ model Location {
   building String
   floor    String
   room     String
+  // false = retired: hidden from the report form, kept for its old reports
+  isActive Boolean  @default(true)
   reports  Report[]
 
   @@unique([building, floor, room])
@@ -144,6 +148,7 @@ model Report {
   duplicates          Report[]             @relation("DuplicateOf")
   duplicateFlags      DuplicateFlag[]      @relation("FlaggedReport")
   duplicateOfFlags    DuplicateFlag[]      @relation("CandidateReport")
+  notifications       Notification[]
   // the reporter's signed Job Order Form for this report (one per report)
   jobOrderForm        JobOrderForm?
   priorityAdjustments PriorityAdjustment[]
@@ -385,4 +390,52 @@ model JobOrderForm {
 
   @@index([status, submittedAt])
   @@index([requesterId])
+}
+
+// Phase 8: one notification for one person. Shown in the in-app list
+// (read / unread) and, where the person allowed it, sent as a push.
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String
+  // what happened, e.g. "report.submitted", "job.offered" (see notification-rules.ts)
+  kind       String
+  title      String
+  body       String
+  reportId   String?
+  jobOrderId String?
+  formId     String?
+  // the same event never notifies the same person twice
+  dedupeKey  String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report     Report?   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, createdAt])
+}
+
+enum PushPlatform {
+  ANDROID
+  IOS
+  WEB
+}
+
+// A phone (Firebase Cloud Messaging token) or browser (Web Push
+// subscription) that receives pushes for a signed-in user.
+model PushDevice {
+  id         String       @id @default(uuid())
+  userId     String
+  platform   PushPlatform
+  // FCM registration token, or the Web Push endpoint URL
+  token      String       @unique
+  // Web Push only: the subscription's encryption keys
+  p256dh     String?
+  auth       String?
+  userAgent  String?
+  createdAt  DateTime     @default(now())
+  lastSeenAt DateTime     @default(now())
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

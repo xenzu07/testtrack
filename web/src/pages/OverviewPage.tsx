@@ -197,38 +197,38 @@ export default function OverviewPage() {
 
       {error && <ErrorBox message={error} onRetry={() => void load()} />}
 
+      <div className="card">
+        <div className="card-head">
+          <h2>Needs attention</h2>
+        </div>
+        {pending.length === 0 ? (
+          <p className="all-clear">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="m8 12 3 3 5-6" />
+            </svg>
+            Nothing is waiting on you right now.
+          </p>
+        ) : (
+          <ul className="attn">
+            {pending.map((t) => (
+              <li key={t.label} className={`attn-${t.tone}`}>
+                <Link to={t.to}>
+                  <span className="attn-count">{t.count}</span>
+                  <span className="attn-text">
+                    <span className="attn-label">{t.label}</span>
+                    <span className="attn-hint">{t.hint}</span>
+                  </span>
+                  <span className="attn-go" aria-hidden="true">→</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="grid-2">
         <div>
-          <div className="card">
-            <div className="card-head">
-              <h2>Needs attention</h2>
-            </div>
-            {pending.length === 0 ? (
-              <p className="all-clear">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="m8 12 3 3 5-6" />
-                </svg>
-                Nothing is waiting on you right now.
-              </p>
-            ) : (
-              <ul className="attn">
-                {pending.map((t) => (
-                  <li key={t.label} className={`attn-${t.tone}`}>
-                    <Link to={t.to}>
-                      <span className="attn-count">{t.count}</span>
-                      <span className="attn-text">
-                        <span className="attn-label">{t.label}</span>
-                        <span className="attn-hint">{t.hint}</span>
-                      </span>
-                      <span className="attn-go" aria-hidden="true">→</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
           <div className="card">
             <div className="card-head">
               <h2>Open high-priority reports</h2>

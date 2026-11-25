@@ -207,7 +207,7 @@ class _JobOrderFormScreenState extends State<JobOrderFormScreen> {
           const SizedBox(height: 4),
           _readOnly('Category', rep['category']),
           _readOnly('Location', rep['location']),
-          _readOnly('Urgency', urgencyLabel(rep['urgency'])),
+          _readOnly('Priority', urgencyLabel(rep['urgency'])),
           const SizedBox(height: 12),
           TextFormField(
             controller: work,
@@ -224,7 +224,7 @@ class _JobOrderFormScreenState extends State<JobOrderFormScreen> {
             controller: schedule,
             enabled: !submitting,
             maxLength: 200,
-            decoration: _dec('Preferred schedule (optional)', hint: 'Example: after 3 PM, or Saturday morning'),
+            decoration: _dec('Preferred schedule', hint: 'Example: after 3 PM, or Saturday morning', helper: 'Optional'),
           ),
           const SizedBox(height: 8),
           TextFormField(
@@ -232,7 +232,7 @@ class _JobOrderFormScreenState extends State<JobOrderFormScreen> {
             enabled: !submitting,
             maxLines: 2,
             maxLength: 1000,
-            decoration: _dec('Additional notes (optional)'),
+            decoration: _dec('Additional notes', helper: 'Optional'),
           ),
           const Divider(height: 32),
           Text('Certification and signature', style: Theme.of(context).textTheme.titleMedium),

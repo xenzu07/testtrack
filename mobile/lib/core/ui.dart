@@ -40,20 +40,6 @@ class PriorityPill extends StatelessWidget {
       : Pill('$priority ${priorityLabel[priority] ?? ''}', priorityColor(context, priority));
 }
 
-Color urgencyColor(BuildContext context, String u) {
-  final c = context.c;
-  switch (u) {
-    case 'CRITICAL':
-      return c.danger;
-    case 'HIGH':
-      return c.warn;
-    case 'MEDIUM':
-      return c.info;
-    default:
-      return c.muted;
-  }
-}
-
 /// Target dates are stored as UTC midnight; overdue once that day has passed.
 bool isOverdue(Map job) {
   final t = job['targetDate'];
@@ -63,9 +49,13 @@ bool isOverdue(Map job) {
   return DateTime.parse(t as String).isBefore(today);
 }
 
-/// "2026-11-25" for a UTC-midnight date such as a target date.
-String formatDay(Object? iso) =>
-    iso == null ? 'Not set' : iso.toString().substring(0, 10);
+/// "Nov 25, 2026" for a UTC-midnight date such as a target date (read in UTC
+/// so it never shifts a day with the phone's time zone).
+String formatDay(Object? iso) {
+  if (iso == null) return 'Not set';
+  final d = DateTime.tryParse(iso.toString());
+  return d == null ? iso.toString() : formatCalendarDay(d.toUtc());
+}
 
 String timeAgo(String iso) {
   final diff = DateTime.now().difference(DateTime.parse(iso).toLocal());
@@ -74,7 +64,7 @@ String timeAgo(String iso) {
   if (diff.inHours < 24) return '${diff.inHours} h ago';
   final days = diff.inDays;
   if (days < 14) return days == 1 ? '1 day ago' : '$days days ago';
-  return formatDate(iso).substring(0, 10);
+  return formatCalendarDay(DateTime.parse(iso).toLocal());
 }
 
 /// The most recent history entry of a report, or its submission time.
@@ -112,14 +102,6 @@ class Pill extends StatelessWidget {
       ]),
     );
   }
-}
-
-class UrgencyPill extends StatelessWidget {
-  final String urgency;
-  const UrgencyPill(this.urgency, {super.key});
-
-  @override
-  Widget build(BuildContext context) => Pill(urgencyLabel(urgency), urgencyColor(context, urgency));
 }
 
 const _steps = [
@@ -258,11 +240,18 @@ class BrandTitle extends StatelessWidget {
         child: const Icon(Icons.home_work_outlined, size: 18, color: Colors.white),
       ),
       const SizedBox(width: 12),
-      Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: c.text)),
-        Text('FACILITRACK · CvSU Imus',
-            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: c.muted, letterSpacing: 0.2)),
-      ]),
+      Flexible(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: c.text)),
+          Text('FACILITRACK · CvSU Imus',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: c.muted, letterSpacing: 0.2)),
+        ]),
+      ),
     ]);
   }
 }
@@ -445,6 +434,38 @@ class MetaLine extends StatelessWidget {
     return Text.rich(
       TextSpan(children: spans),
       style: TextStyle(fontSize: 13.5, color: context.c.muted),
+    );
+  }
+}
+
+/// Empty list placeholder inside a scrolling page: icon, title, one line.
+class EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? message;
+  const EmptyState({super.key, required this.icon, required this.title, this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+      child: Column(children: [
+        Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(color: c.hover, shape: BoxShape.circle),
+          child: Icon(icon, size: 26, color: c.muted),
+        ),
+        const SizedBox(height: 14),
+        Text(title,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: c.text)),
+        if (message != null) ...[
+          const SizedBox(height: 4),
+          Text(message!, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: c.muted, height: 1.4)),
+        ],
+      ]),
     );
   }
 }

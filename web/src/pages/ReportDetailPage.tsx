@@ -18,7 +18,6 @@ import {
   PriorityBadge,
   StatusBadge,
   StatusStepper,
-  UrgencyBadge,
 } from '../ui';
 import type {
   AssignmentStatus,
@@ -116,9 +115,9 @@ export default function ReportDetailPage() {
         <StatusStepper status={report.status} />
       </div>
 
-      <div className="grid-2">
-        <div>
-          <div className="card">
+      <div className="grid-2 detail-grid">
+        <div className="detail-main">
+          <div className="card detail-summary">
             {report.photos.map((p) =>
               mediaUrl(p.storageUrl) ? (
                 <img
@@ -137,10 +136,6 @@ export default function ReportDetailPage() {
             <dl className="kv">
               <dt>Location</dt>
               <dd>{locationText(report.location)}</dd>
-              <dt>Reporter urgency</dt>
-              <dd>
-                <UrgencyBadge urgency={report.urgency} />
-              </dd>
               <dt>Reported by</dt>
               <dd>
                 {report.reporter.fullName}
@@ -220,7 +215,7 @@ export default function ReportDetailPage() {
           )}
         </div>
 
-        <div>
+        <div className="detail-side">
           {report.jobOrder && report.duplicateOfId && job?.status === 'CANCELLED' ? (
             <>
               <RoutePanel key={report.id} report={report} tradeUnits={tradeUnits} onDone={() => void load()} />

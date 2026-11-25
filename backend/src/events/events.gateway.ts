@@ -76,4 +76,13 @@ export class EventsGateway implements OnGatewayConnection {
       this.logger.warn(`Could not emit event: ${String(e)}`);
     }
   }
+
+  // a new notification, only to its owner (every open tab / app of theirs)
+  notification(userId: string, payload: unknown) {
+    try {
+      this.server.to(`user:${userId}`).emit('notification.new', payload);
+    } catch (e) {
+      this.logger.warn(`Could not emit notification: ${String(e)}`);
+    }
+  }
 }

@@ -5,6 +5,7 @@ import { useAuth } from './auth';
 import { useLiveStatus } from './socket';
 import AccountMenu from './AccountMenu';
 import Toasts from './Toasts';
+import { NotificationBell, NotificationsProvider } from './notifications';
 
 // 24px line icons, drawn with currentColor
 const ICONS: Record<string, ReactNode> = {
@@ -36,7 +37,7 @@ function Brand() {
       </span>
       <span className="brand-text">
         <span className="brand-name">FACILITRACK</span>
-        <span className="brand-sub">CvSU Imus · General Services</span>
+        <span className="brand-sub">CvSU Imus · GSO</span>
       </span>
     </Link>
   );
@@ -73,9 +74,15 @@ export default function Layout() {
   );
 
   return (
+    <NotificationsProvider>
     <div className={`shell${open ? ' drawer-open' : ''}`}>
       <aside className="sidebar" aria-label="Main">
-        <Brand />
+        <div className="sidebar-top">
+          <Brand />
+          <span className="sidebar-bell">
+            <NotificationBell />
+          </span>
+        </div>
         <nav className="nav-group" aria-label="Work">
           <span className="nav-label">Work</span>
           {link('/overview', 'Overview', 'overview')}
@@ -111,6 +118,9 @@ export default function Layout() {
             </svg>
           </button>
           <Brand />
+          <span className="mobilebar-bell">
+            <NotificationBell />
+          </span>
         </header>
         <main className="content">
           <Outlet />
@@ -118,5 +128,6 @@ export default function Layout() {
       </div>
       <Toasts />
     </div>
+    </NotificationsProvider>
   );
 }

@@ -164,7 +164,7 @@ export default function TechniciansPage() {
                   <td data-label="To verify" className="num">{t.workload.awaitingVerification}</td>
                   <td data-label="Closed" className="num">{t.workload.closed}</td>
                   <td data-label="" className="num">
-                    <Link to={`/analytics/technicians/${t.id}`} onClick={(e) => e.stopPropagation()}>
+                    <Link className="cell-link" to={`/analytics/technicians/${t.id}`} onClick={(e) => e.stopPropagation()}>
                       Performance
                     </Link>
                   </td>

@@ -8,6 +8,7 @@ import { DuplicateStatus, Prisma, Status } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PriorityService } from '../priority/priority.service';
 import { EventsGateway } from '../events/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { linkSameProblem, unlinkReport } from './report-links';
 import {
   DuplicateCandidate,
@@ -47,6 +48,7 @@ export class DuplicatesService {
     private prisma: PrismaService,
     private priority: PriorityService,
     private events: EventsGateway,
+    private notifications: NotificationsService,
   ) {}
 
   private toCandidate(r: {
@@ -237,6 +239,14 @@ export class DuplicatesService {
         },
         outcome.reporterIds,
       );
+      this.notifications.emit({
+        type: 'report.linked',
+        reportId: outcome.copyReportId,
+        actorId: userId,
+        reporterIds: outcome.reporterIds,
+        cancelledJob: outcome.cancelledJob ?? null,
+        keptJobOrderNo: outcome.keptJobOrderNo,
+      });
     }
     return this.listFor(reportId);
   }

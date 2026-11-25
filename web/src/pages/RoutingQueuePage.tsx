@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api';
-import { REVIEW_FLAG_LABEL, locationText, timeAgo, urgencyLabel } from '../format';
+import { REVIEW_FLAG_LABEL, locationText, timeAgo } from '../format';
 import { useRealtime } from '../socket';
 import { ErrorBox, RefreshButton, Flag, PriorityBadge } from '../ui';
 import type { RoutingQueue, RoutingQueueItem } from '../types';
@@ -76,7 +76,7 @@ export default function RoutingQueuePage() {
       {error && <ErrorBox message={error} onRetry={() => void load()} />}
       {queue && queue.linkedDuplicatesWaiting > 0 && (
         <p className="muted">
-          {queue.linkedDuplicatesWaiting} report(s) linked as duplicates are not listed: they are
+          {queue.linkedDuplicatesWaiting === 1 ? '1 report linked as a duplicate is' : `${queue.linkedDuplicatesWaiting} reports linked as duplicates are`} not listed: they are
           handled with their original report.
         </p>
       )}
@@ -110,10 +110,9 @@ export default function RoutingQueuePage() {
                 </div>
                 <p className="queue-desc">{r.description}</p>
                 <div className="head-badges queue-badges">
-                  <span className="muted small">Reporter urgency: {urgencyLabel(r.urgency)}</span>
                   {r.needsReview && <Flag kind="warn">Needs review</Flag>}
                   {r.openDuplicateFlags > 0 && <Flag kind="danger">Possible duplicate</Flag>}
-                  {r._count.duplicates > 0 && <Flag kind="info">{r._count.duplicates} linked report(s)</Flag>}
+                  {r._count.duplicates > 0 && <Flag kind="info">{r._count.duplicates} linked {r._count.duplicates === 1 ? 'report' : 'reports'}</Flag>}
                 </div>
               </div>
               <div className="queue-side">

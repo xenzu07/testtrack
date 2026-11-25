@@ -14,6 +14,7 @@ import { CreateJobOrderDto } from './dto/create-job-order.dto';
 import { UpdateJobStatusDto } from './dto/update-job-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { EventsGateway } from '../events/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { AddProgressDto } from './dto/add-progress.dto';
 import { ReportDelayDto } from './dto/report-delay.dto';
 import { ResumeJobDto } from './dto/resume-job.dto';
@@ -67,6 +68,7 @@ export class JobOrdersService {
     private events: EventsGateway,
     private storage: PhotoStorageService,
     private technicians: TechniciansService,
+    private notifications: NotificationsService,
   ) {}
 
   // work photos are stored next to the report's own photos
@@ -244,6 +246,13 @@ export class JobOrdersService {
             },
             [report.reporterId, tech?.id, ...linkedReporters],
           );
+          this.notifications.emit({
+            type: 'job.created',
+            reportId: report.id,
+            jobOrderId: created.id,
+            actorId: userId,
+            technicianId: tech?.id ?? null,
+          });
         }
         return created;
       } catch (e) {
@@ -376,6 +385,14 @@ export class JobOrdersService {
       },
       [job.report.reporterId, tech.id],
     );
+    this.notifications.emit({
+      type: 'job.reassigned',
+      reportId: job.reportId,
+      jobOrderId: id,
+      actorId: userId,
+      technicianId: tech.id,
+      previousTechnicianId: previousId,
+    });
     // the previous technician is told, so the job leaves their list
     if (previousId) {
       this.events.statusChanged(
@@ -489,6 +506,14 @@ export class JobOrdersService {
       // the reporter is only told when work is confirmed
       accept ? [job.report.reporterId, userId] : [userId],
     );
+    this.notifications.emit({
+      type: 'job.answered',
+      reportId: job.reportId,
+      jobOrderId: id,
+      technicianId: userId,
+      accepted: accept,
+      reason: declineReason,
+    });
     return updated;
   }
 
@@ -577,6 +602,13 @@ export class JobOrdersService {
       },
       [job.report.reporterId, job.technicianId, ...linkedReporters],
     );
+    this.notifications.emit({
+      type: 'job.status',
+      reportId: job.reportId,
+      jobOrderId: id,
+      actorId: userId,
+      status: dto.status === Status.IN_PROGRESS ? 'IN_PROGRESS' : 'COMPLETED',
+    });
     return updated;
   }
 
@@ -644,6 +676,13 @@ export class JobOrdersService {
       },
       [job.report.reporterId, job.technicianId, ...linkedReporters],
     );
+    this.notifications.emit({
+      type: 'job.verified',
+      reportId: job.reportId,
+      jobOrderId: id,
+      actorId: userId,
+      approved,
+    });
     return updated;
   }
 
@@ -705,6 +744,13 @@ export class JobOrdersService {
       },
       [job.report.reporterId, job.technicianId],
     );
+    this.notifications.emit({
+      type: 'job.progress',
+      reportId: job.reportId,
+      jobOrderId: id,
+      actorId: userId,
+      remarks: dto.remarks,
+    });
 
     return this.prisma.jobOrder.findUnique({
       where: { id },
@@ -813,6 +859,13 @@ export class JobOrdersService {
       },
       [job.report.reporterId, job.technicianId, ...linkedReporters],
     );
+    this.notifications.emit({
+      type: 'job.status',
+      reportId: job.reportId,
+      jobOrderId: id,
+      actorId: user.userId,
+      status: 'DELAYED',
+    });
     return updated;
   }
 
@@ -890,6 +943,13 @@ export class JobOrdersService {
       },
       [job.report.reporterId, job.technicianId, ...linkedReporters],
     );
+    this.notifications.emit({
+      type: 'job.status',
+      reportId: job.reportId,
+      jobOrderId: id,
+      actorId: user.userId,
+      status: 'RESUMED',
+    });
     return updated;
   }
 }

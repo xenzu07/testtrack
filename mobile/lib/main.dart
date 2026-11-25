@@ -9,6 +9,7 @@ import 'features/home/placeholder_home.dart';
 import 'features/reports/my_reports_screen.dart';
 import 'features/jobs/my_jobs_screen.dart';
 import 'features/survey/skills_survey_screen.dart';
+import 'features/notifications/notifications.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,7 @@ Future<void> main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider.value(value: theme),
+        ChangeNotifierProvider(create: (_) => NotificationsController()),
       ],
       child: const FacilitrackApp(),
     ),
@@ -58,12 +60,12 @@ class Gate extends StatelessWidget {
 
     switch (user.role) {
       case 'REPORTER':
-        return const MyReportsScreen();
+        return NotificationsScope(key: ValueKey(user.id), child: const MyReportsScreen());
       case 'TECHNICIAN':
         // first sign-in: the skills survey comes before the job list
         return user.needsSurvey
             ? const SkillsSurveyScreen(required: true)
-            : const MyJobsScreen();
+            : NotificationsScope(key: ValueKey(user.id), child: const MyJobsScreen());
       default:
         return const PlaceholderHome(
           title: 'Administration',

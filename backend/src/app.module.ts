@@ -11,6 +11,7 @@ import { TechniciansModule } from './technicians/technicians.module';
 import { RoutingModule } from './routing/routing.module';
 import { FormsModule } from './forms/forms.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     RoutingModule,
     FormsModule,
     AnalyticsModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

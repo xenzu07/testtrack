@@ -262,7 +262,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
                   controller: materialsCtrl,
                   maxLines: 2,
                   decoration: const InputDecoration(
-                    labelText: 'Materials needed (optional)',
+                    labelText: 'Materials needed',
+                    helperText: 'Optional',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -371,7 +372,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
         return 'Reason: ${d['reason']}'
             '${materials != null ? '\nMaterials: $materials' : ''}'
             '\nRevised target date: '
-            '${revised != null ? revised.toString().substring(0, 10) : 'not yet set'}';
+            '${revised != null ? formatDay(revised) : 'not yet set'}';
       }
     }
     return 'No details recorded.';
@@ -509,7 +510,6 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
           child: Column(children: [
             InfoRow('Job order', j['jobOrderNo']),
             InfoRow('Reported by', r['reporter']['fullName']),
-            InfoRow('Urgency', urgencyLabel(r['urgency'])),
             InfoRow('Trade unit', j['tradeUnit']['name']),
             InfoRow('Materials', j['materialsNote'] ?? 'Not specified'),
             InfoRow('Target date', target),
@@ -596,7 +596,9 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               controller: progressCtrl,
               maxLines: 3,
               decoration: const InputDecoration(
-                labelText: 'What was done or what is pending',
+                labelText: 'Progress update',
+                helperText: 'What was done, or what is still pending',
+                helperMaxLines: 2,
                 hintText: 'Example: Pipe removed, waiting for replacement fitting',
               ),
             ),

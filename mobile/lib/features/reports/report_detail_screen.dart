@@ -204,7 +204,8 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         SectionCard(
           title: 'Details',
           child: Column(children: [
-            InfoRow('Urgency', urgencyLabel(r['urgency'])),
+            // set by the system from the answers (urgency and priority are one level)
+            InfoRow('Priority', urgencyLabel(r['urgency'])),
             InfoRow('Trade unit', r['proposedTradeUnit']['name']),
             InfoRow('Submitted', formatDate(r['createdAt'])),
             if (linked != null) InfoRow('Handled with', 'Another report of the same problem'),

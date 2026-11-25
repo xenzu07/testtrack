@@ -144,7 +144,8 @@ export function buildFormPdf(
     section('Work requested');
     row('Category', f.categoryName);
     row('Location', f.locationText);
-    row('Urgency', titleCase(f.urgency));
+    // the system-set level at the time of signing (urgency = priority)
+    row('Priority', titleCase(f.urgency));
     row('Preferred schedule', f.preferredSchedule ?? 'Any time');
     row('Description', f.workRequested);
     if (f.notes) row('Additional notes', f.notes);

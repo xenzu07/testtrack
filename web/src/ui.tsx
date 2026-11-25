@@ -10,9 +10,9 @@ const FORM_LABEL: Record<FormStatus, string> = {
 export function FormStatusBadge({ status }: { status: FormStatus }) {
   return <span className={`badge f-${status}`}>{FORM_LABEL[status]}</span>;
 }
-import { PRIORITY_LABEL, PROGRESS_STEPS, progressIndex, statusLabel, urgencyLabel } from './format';
+import { PRIORITY_FROM_URGENCY, PRIORITY_LABEL, PROGRESS_STEPS, progressIndex, statusLabel } from './format';
 
-// computed priority (P1-P4); not the reporter's urgency
+// the system-set priority (P1-P4); urgency is the same level
 export function PriorityBadge({ priority }: { priority: PriorityLevel | null | undefined }) {
   if (!priority) return <span className="badge p-none">Not scored</span>;
   return (
@@ -26,8 +26,9 @@ export function StatusBadge({ status }: { status: Status }) {
   return <span className={`badge s-${status}`}>{statusLabel(status)}</span>;
 }
 
-export function UrgencyBadge({ urgency }: { urgency: Urgency }) {
-  return <span className={`badge u-${urgency}`}>{urgencyLabel(urgency)}</span>;
+// a level stored as an urgency word (e.g. on a signed form), shown as priority
+export function UrgencyAsPriority({ urgency }: { urgency: Urgency }) {
+  return <PriorityBadge priority={PRIORITY_FROM_URGENCY[urgency]} />;
 }
 
 // small attention markers next to a status: Overdue, Unassigned, etc.

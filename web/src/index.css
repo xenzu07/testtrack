@@ -689,3 +689,144 @@ select {
 }
 
 .card.table-wrap { padding: 0; }
+
+/* =====================================================
+   Phase 8: notifications (bell, panel, list)
+   ===================================================== */
+.sidebar-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; }
+.sidebar-top .brand { padding-right: 0; }
+.sidebar-bell { padding-top: 2px; }
+.mobilebar-bell { margin-left: auto; }
+.bell { position: relative; }
+.bell-btn { position: relative; border-color: transparent; background: transparent; }
+.bell-btn:hover:not(:disabled) { background: var(--hover); }
+.bell-btn svg { width: 18px; height: 18px; }
+.bell-count {
+  position: absolute; top: -3px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: var(--red); color: #fff; font-size: 11px; font-weight: 700;
+  display: grid; place-items: center; border: 2px solid var(--surface); line-height: 1;
+}
+:root[data-theme='dark'] .bell-count { background: #c94a36; }
+.bell-panel {
+  position: fixed; top: 56px; left: calc(var(--sidebar) + 8px); width: 380px; max-height: min(560px, calc(100vh - 80px));
+  overflow-y: auto; z-index: 60; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-pop); padding: 6px;
+}
+.bell-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px 6px; }
+.bell-all { display: block; text-align: center; padding: 10px; font-size: 13px; font-weight: 500; text-decoration: none; border-top: 1px solid var(--border); margin-top: 4px; }
+@media (max-width: 900px) {
+  .bell-panel { top: 58px; left: 12px; right: 12px; width: auto; }
+}
+.push-prompt {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 6px 8px;
+  padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); font-size: 13px;
+}
+.notif-list { list-style: none; margin: 0; padding: 0; }
+.notif-list li + li { border-top: 1px solid var(--border); }
+.notif {
+  display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: start; width: 100%;
+  padding: 12px 14px; background: none; border: 0; text-align: left; color: var(--text); cursor: pointer; border-radius: var(--radius-sm);
+}
+.notif:hover { background: var(--hover); }
+.notif-compact .notif { padding: 10px; }
+.notif-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: transparent; }
+.notif-unread .notif-dot { background: var(--green); }
+.notif-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.notif-title { font-weight: 500; color: var(--text-2); }
+.notif-unread .notif-title { font-weight: 650; color: var(--text); }
+.notif-body { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.notif-time { font-size: 12px; color: var(--muted); white-space: nowrap; padding-top: 2px; }
+
+/* =====================================================
+   UI pass 2: layout fixes found in screenshots
+   ===================================================== */
+
+/* the sidebar's white column and its border run the full page height,
+   also when the page scrolls past one screen */
+@media (min-width: 901px) {
+  .shell {
+    background: linear-gradient(to right,
+      var(--surface) 0, var(--surface) calc(var(--sidebar) - 1px),
+      var(--border) calc(var(--sidebar) - 1px), var(--border) var(--sidebar),
+      var(--bg) var(--sidebar));
+  }
+  .sidebar { border-right: 0; }
+}
+
+/* bell count: a small pill beside the icon instead of covering it */
+.bell-count {
+  top: 1px; right: -6px; min-width: 17px; height: 17px; padding: 0 4px;
+  font-size: 10.5px; border-width: 2px;
+}
+
+/* overview: needs-attention rows flow into two columns on wide screens */
+.attn { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); column-gap: 28px; }
+.attn li + li { border-top: 0; }
+.attn li { border-bottom: 1px solid var(--border); }
+.attn a { padding: 11px 4px; }
+
+/* table text: names are semibold, not heavy bold */
+.table td strong { font-weight: 600; }
+.cell-link { color: var(--link) !important; font-weight: 500 !important; }
+
+/* cards that need a decision: a quiet left marker, no full outline */
+.card-attention { border-color: var(--border); box-shadow: inset 3px 0 0 var(--amber); }
+
+/* duplicate suggestions: one stacked block per candidate, text wraps */
+.dup-row { flex-direction: column; align-items: stretch; gap: 8px; padding: 14px 0; }
+.dup-row .item-main { min-width: 0; }
+.dup-row .item-main .muted, .dup-row .item-main .small { white-space: normal; overflow-wrap: anywhere; }
+.dup-side { flex-direction: column; align-items: flex-start; text-align: left; max-width: none; gap: 6px; }
+.dup-side .btn-row { margin-top: 2px; }
+
+/* priority factors: point values never break across lines */
+.factors td.num { white-space: nowrap; }
+
+/* page header: the title block shrinks, actions stay on the right */
+.page-head { flex-wrap: nowrap; }
+.page-head > div:first-child { flex: 1 1 auto; }
+.page-head > .btn, .page-head > .icon-btn, .page-head > .page-actions, .page-head > .head-badges { flex-shrink: 0; }
+@media (max-width: 560px) {
+  .page-head:has(> .head-badges) { flex-wrap: wrap; }
+}
+
+/* KPI strip: even rows (6 / 3 / 2 across) so no tile sits alone */
+.kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1250px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kpis:has(> .kpi:nth-child(5):last-child) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1250px) {
+  .kpis:has(> .kpi:nth-child(5):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .kpis:has(> .kpi:nth-child(5):last-child) > .kpi-hero { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+  .kpis:has(> .kpi:nth-child(5):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* report detail on narrow screens: summary, then the action panel, then
+   priority / duplicates / history */
+@media (max-width: 1000px) {
+  .detail-main { display: contents; }
+  .detail-main > * { order: 3; }
+  .detail-main > .detail-summary { order: 1; }
+  .detail-side { order: 2; }
+  .detail-grid { gap: 0 16px; }
+}
+
+/* =====================================================
+   Layering. The sticky sidebar is its own stacking layer, so the panels
+   that open from it (notifications, account menu, change-password dialog)
+   are painted with it. Lifting the whole sidebar above the page keeps them
+   on top of positioned content such as chart cards and the progress steps.
+   Order, low to high: page content < sticky top bar (30) < drawer
+   backdrop (35) < sidebar and its pop-ups (45) < dialogs (60) < toasts (70)
+   ===================================================== */
+.sidebar { z-index: 45; }
+@media (max-width: 900px) {
+  .mobilebar { z-index: 30; }
+  .sidebar { z-index: 45; }
+  .shell.drawer-open .drawer-backdrop { z-index: 40; }
+}
+/* the bell panel sits above everything else on the page, also on phones
+   where it opens from the top bar */
+.bell-panel { z-index: 65; }

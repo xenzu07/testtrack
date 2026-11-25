@@ -7,6 +7,7 @@ import '../../core/realtime.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../auth/account_menu.dart';
+import '../notifications/notifications.dart';
 import '../auth/auth_provider.dart';
 import 'job_detail_screen.dart';
 import 'assignment_sheet.dart';
@@ -136,7 +137,8 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           title: const BrandTitle('My Jobs'),
           toolbarHeight: 64,
           actions: [
-            const ThemeToggleButton(),
+            const NotificationBell(),
+          const ThemeToggleButton(),
             const AccountMenuButton(),
             const SizedBox(width: 4),
           ],
@@ -224,7 +226,7 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
     return _list(
       shown,
       empty: statusFilter == null
-          ? 'No active jobs. New assignments from the coordinator will appear here.'
+          ? 'New assignments from the coordinator will appear here.'
           : 'No jobs with this status.',
       header: header,
     );
@@ -239,11 +241,10 @@ class _MyJobsScreenState extends State<MyJobsScreen> {
           children: [
             ?header,
             if (list.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(empty,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: context.c.muted)),
+              EmptyState(
+                icon: header == null ? Icons.history : Icons.assignment_turned_in_outlined,
+                title: header == null ? 'No finished jobs yet' : 'Nothing to work on',
+                message: empty,
               ),
             ...list.map((j) => _JobCard(
                 job: Map<String, dynamic>.from(j),

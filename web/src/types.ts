@@ -50,9 +50,6 @@ export interface JobOrderFormView {
 }
 export type ReviewFlagCode =
   | 'impact_missing'
-  | 'urgency_overstated'
-  | 'hazard_low_urgency'
-  | 'dangerous_category_low_urgency'
   | 'possible_duplicate';
 
 export interface TradeUnit {
@@ -410,7 +407,6 @@ export interface AnalyticsOverview {
   byBuilding: CountItem[];
   topLocations: CountItem[];
   byPriority: CountItem[];
-  byUrgency: CountItem[];
   timing: { toAssign: DurationStats; toComplete: DurationStats };
   technicians: {
     id: string;

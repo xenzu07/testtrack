@@ -6,6 +6,7 @@ import '../../core/realtime.dart';
 import '../../core/theme.dart';
 import '../../core/ui.dart';
 import '../auth/account_menu.dart';
+import '../notifications/notifications.dart';
 import 'create_report_screen.dart';
 import 'report_detail_screen.dart';
 import '../forms/form_detail_screen.dart';
@@ -91,6 +92,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
         title: const BrandTitle('My Reports'),
         toolbarHeight: 64,
         actions: [
+          const NotificationBell(),
           const ThemeToggleButton(),
           const AccountMenuButton(),
           const SizedBox(width: 4),
@@ -145,11 +147,10 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
             ),
             SizedBox(height: 8),
             if (list.isEmpty)
-              Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('Nothing here right now.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: context.c.muted)),
+              const EmptyState(
+                icon: Icons.inbox_outlined,
+                title: 'Nothing here',
+                message: 'No reports match this filter.',
               ),
             ...list.map((r) => _ReportCard(
                   report: Map<String, dynamic>.from(r),

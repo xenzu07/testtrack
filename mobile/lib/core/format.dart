@@ -31,10 +31,18 @@ Color statusColor(String s) {
   }
 }
 
+const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/// "Nov 25, 2026" (a calendar day, no time).
+String formatCalendarDay(DateTime d) => '${_monthNames[d.month - 1]} ${d.day}, ${d.year}';
+
+/// "Nov 25, 2026, 1:22 PM" in the phone's local time, the same style as the
+/// web dashboard.
 String formatDate(String iso) {
   final d = DateTime.parse(iso).toLocal();
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
+  final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+  final m = d.minute.toString().padLeft(2, '0');
+  return '${formatCalendarDay(d)}, $h:$m ${d.hour < 12 ? 'AM' : 'PM'}';
 }
 
 class StatusChip extends StatelessWidget {

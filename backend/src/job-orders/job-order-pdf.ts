@@ -98,7 +98,8 @@ export function buildJobOrderPdf(
     section('Reported issue');
     row('Category', r.category.name);
     row('Location', `${r.location.building}, ${r.location.floor}, ${r.location.room}`);
-    row('Urgency', titleCase(r.urgency));
+    // urgency and priority are one system-set level
+    row('Priority', titleCase(r.urgency));
     row(
       'Reported by',
       r.reporter.fullName + (r.reporter.userType ? ` (${r.reporter.userType})` : ''),

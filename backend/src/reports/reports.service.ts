@@ -13,12 +13,15 @@ import { CreateReportDto } from './dto/create-report.dto';
 import { ListReportsDto } from './dto/list-reports.dto';
 import { RouteReportDto } from './dto/route-report.dto';
 import { EventsGateway } from '../events/events.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { DuplicatesService } from '../duplicates/duplicates.service';
 import { syncLinkedCopies } from '../duplicates/report-links';
+import { URGENCY_FOR_LEVEL, scorePriority } from '../priority/priority-scoring';
 
-// Internal triage data that reporters do not see (their own urgency and
-// impact answers stay visible). Removed from every reporter response.
+// Internal triage data that reporters do not see. They do see the resulting
+// level as "urgency" (Low / Medium / High / Critical, set by the system) and
+// their own impact answers. Removed from every reporter response.
 const INTERNAL_FIELDS = [
   'priorityScore',
   'autoPriority',
@@ -87,6 +90,7 @@ export class ReportsService {
     private events: EventsGateway,
     private storage: PhotoStorageService,
     private duplicates: DuplicatesService,
+    private notifications: NotificationsService,
   ) {}
 
   // dropdown data for the mobile report form
@@ -96,10 +100,19 @@ export class ReportsService {
         include: { defaultTradeUnit: { select: { id: true, name: true } } },
         orderBy: { name: 'asc' },
       }),
-      this.prisma.location.findMany({
-        orderBy: [{ building: 'asc' }, { floor: 'asc' }, { room: 'asc' }],
-      }),
+      // retired locations stay in the database for their old reports, but
+      // are not offered for new ones
+      this.prisma.location.findMany({ where: { isActive: true } }),
     ]);
+    // natural order, so "LR 5" comes before "LR 10" and "2nd Floor" before "10th"
+    const natural = (a: string, b: string) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    locations.sort(
+      (a, b) =>
+        natural(a.building, b.building) ||
+        natural(a.floor, b.floor) ||
+        natural(a.room, b.room),
+    );
     return { categories, locations, urgencies: Object.values(Urgency) };
   }
 
@@ -116,7 +129,18 @@ export class ReportsService {
     const location = await this.prisma.location.findUnique({
       where: { id: dto.locationId },
     });
-    if (!location) throw new NotFoundException('Location not found');
+    if (!location || !location.isActive) {
+      throw new NotFoundException('Location not found');
+    }
+
+    // first estimate of the priority from the report itself
+    const initial = scorePriority({
+      categorySeverity: category.severity,
+      affectedPeople: dto.affectedPeople ?? null,
+      safetyHazard: dto.safetyHazard ?? null,
+      blocksUse: dto.blocksUse ?? null,
+      corroboratingReports: 0,
+    });
 
     // the photo goes to storage first, under the report's own folder; if the
     // database write then fails, the uploaded object is removed again
@@ -138,7 +162,12 @@ export class ReportsService {
             // rule-based routing: category -> default trade unit
             proposedTradeUnitId: category.defaultTradeUnitId,
             description: dto.description,
-            urgency: dto.urgency,
+            // set by the system, never by the reporter (recalculated right
+            // after, once duplicates are known)
+            urgency: URGENCY_FOR_LEVEL[initial.level],
+            priority: initial.level,
+            autoPriority: initial.level,
+            priorityScore: initial.score,
             affectedPeople: dto.affectedPeople ?? null,
             safetyHazard: dto.safetyHazard ?? null,
             blocksUse: dto.blocksUse ?? null,
@@ -175,10 +204,12 @@ export class ReportsService {
         },
         [userId],
       );
+      this.notifications.emit({ type: 'report.submitted', reportId: created.id, actorId: userId });
     }
     if (!created) return created;
     // separate modules: duplicate detection, then priority scoring
     await this.duplicates.analyseNewReport(created.id);
+    this.notifications.emitPriorityReview([created.id]);
     return forReporter(
       await this.prisma.report.findUnique({
         where: { id: created.id },
@@ -253,6 +284,7 @@ export class ReportsService {
       },
       [report.reporterId, ...linkedReporters],
     );
+    this.notifications.emit({ type: 'report.routed', reportId: id, actorId: userId, note });
     return updated;
   }
 

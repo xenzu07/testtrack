@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { DuplicateStatus, Prisma, Priority, Status } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PRIORITY_LABEL, ReviewFlag, scorePriority } from './priority-scoring';
+import { PRIORITY_LABEL, ReviewFlag, URGENCY_FOR_LEVEL, scorePriority } from './priority-scoring';
 
 type Db = PrismaService | Prisma.TransactionClient;
 
@@ -23,7 +23,6 @@ export class PriorityService {
       select: {
         status: true,
         jobOrder: { select: { id: true } },
-        urgency: true,
         affectedPeople: true,
         safetyHazard: true,
         blocksUse: true,
@@ -43,7 +42,6 @@ export class PriorityService {
     if (!report) throw new NotFoundException('Report not found');
 
     const result = scorePriority({
-      urgency: report.urgency,
       categorySeverity: report.category.severity,
       affectedPeople: report.affectedPeople,
       safetyHazard: report.safetyHazard,
@@ -76,6 +74,8 @@ export class PriorityService {
         priorityScore: result.score,
         autoPriority: result.level,
         priority: report.priorityLocked ? report.priority : result.level,
+        // urgency and priority are one value: the stored urgency follows it
+        urgency: URGENCY_FOR_LEVEL[(report.priorityLocked && report.priority) || result.level],
         priorityFactors: result.factors as unknown as Prisma.InputJsonValue,
         reviewFlags: flags,
         needsReview,
@@ -146,6 +146,7 @@ export class PriorityService {
         where: { id: reportId },
         data: {
           priority: target,
+          urgency: URGENCY_FOR_LEVEL[target],
           priorityLocked: to !== null,
           needsReview: false,
           reviewedAt: now,

@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, errorMessage } from '../api';
 import { formatDateTime, timeAgo } from '../format';
 import { useRealtime } from '../socket';
-import { ErrorBox, FilterTabs, RefreshButton, FormStatusBadge, UrgencyBadge } from '../ui';
+import { ErrorBox, FilterTabs, RefreshButton, FormStatusBadge, UrgencyAsPriority } from '../ui';
 import type { FormStatus, JobOrderFormView } from '../types';
 
 const STATUSES: FormStatus[] = ['SUBMITTED', 'RECEIVED', 'RETURNED', 'APPROVED'];
@@ -75,7 +75,7 @@ export default function FormsPage() {
                 <th>Form</th>
                 <th>Requester</th>
                 <th>Work requested</th>
-                <th>Urgency</th>
+                <th>Priority</th>
                 <th>Status</th>
                 <th>Job order</th>
                 <th>Submitted</th>
@@ -98,8 +98,8 @@ export default function FormsPage() {
                     {f.categoryName}
                     <div className="cell-sub">{f.locationText}</div>
                   </td>
-                  <td data-label="Urgency">
-                    <UrgencyBadge urgency={f.urgency} />
+                  <td data-label="Priority">
+                    <UrgencyAsPriority urgency={f.urgency} />
                   </td>
                   <td data-label="Status">
                     <FormStatusBadge status={f.status} />

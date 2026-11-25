@@ -280,7 +280,6 @@ export class AnalyticsService {
       byCategory,
       byLocation,
       byPriority,
-      byUrgency,
       facts,
       unresolved,
       categories,
@@ -307,11 +306,6 @@ export class AnalyticsService {
       }),
       this.prisma.report.groupBy({
         by: ['priority'],
-        where,
-        _count: { _all: true },
-      }),
-      this.prisma.report.groupBy({
-        by: ['urgency'],
         where,
         _count: { _all: true },
       }),
@@ -464,10 +458,6 @@ export class AnalyticsService {
       byPriority: ['P1', 'P2', 'P3', 'P4', null].map((p) => ({
         label: p ?? 'Not scored',
         count: byPriority.find((x) => x.priority === p)?._count._all ?? 0,
-      })),
-      byUrgency: ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((u) => ({
-        label: u,
-        count: byUrgency.find((x) => x.urgency === u)?._count._all ?? 0,
       })),
       timing: {
         toAssign: durationStats(

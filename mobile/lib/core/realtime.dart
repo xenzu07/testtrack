@@ -9,8 +9,12 @@ class Realtime {
 
   io.Socket? _socket;
   final _controller = StreamController<Map<String, dynamic>>.broadcast();
+  final _notifications = StreamController<Map<String, dynamic>>.broadcast();
 
   Stream<Map<String, dynamic>> get events => _controller.stream;
+
+  /// New notifications for the signed-in user (the server sends only theirs).
+  Stream<Map<String, dynamic>> get notifications => _notifications.stream;
 
   void connect() {
     final token = ApiClient.instance.token;
@@ -27,6 +31,9 @@ class Realtime {
     );
     s.on('report.statusChanged', (data) {
       if (data is Map) _controller.add(Map<String, dynamic>.from(data));
+    });
+    s.on('notification.new', (data) {
+      if (data is Map) _notifications.add(Map<String, dynamic>.from(data));
     });
     s.connect();
     _socket = s;
