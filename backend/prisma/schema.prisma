@@ -1,0 +1,388 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(uuid())
+  fullName            String
+  email               String               @unique
+  passwordHash        String
+  role                Role
+  userType            String?
+  isActive            Boolean              @default(true)
+  tradeUnitId         String?
+  // bumped to end every session of this user (password change/reset,
+  // role change, deactivation, "sign out everywhere"); tokens carry it as "ver"
+  tokenVersion        Int                  @default(0)
+  // set when a technician finishes the skills survey (null = not done yet)
+  surveyCompletedAt   DateTime?
+  technicianRoles     TechnicianRole[]
+  surveys             TechnicianSurvey[]
+  feedback            Feedback[]
+  jobs                JobOrder[]           @relation("Technician")
+  assignmentsReceived JobAssignment[]      @relation("AssignmentTechnician")
+  assignmentsMade     JobAssignment[]      @relation("AssignmentAssigner")
+  priorityAdjustments PriorityAdjustment[]
+  reportsReviewed     Report[]             @relation("ReportReviewer")
+  duplicateDecisions  DuplicateFlag[]      @relation("DuplicateReviewer")
+  formsRequested      JobOrderForm[]       @relation("FormRequester")
+  formsReceived       JobOrderForm[]       @relation("FormReceiver")
+  formsDecided        JobOrderForm[]       @relation("FormDecider")
+  jobsVerified        JobOrder[]           @relation("Verifier")
+  delaysReported      MaterialDelay[]      @relation("DelayReporter")
+  delaysResolved      MaterialDelay[]      @relation("DelayResolver")
+  reports             Report[]             @relation("Reporter")
+  tradeUnit           TradeUnit?           @relation(fields: [tradeUnitId], references: [id])
+}
+
+model TradeUnit {
+  id              String           @id @default(uuid())
+  name            String           @unique
+  categories      IssueCategory[]
+  jobOrders       JobOrder[]
+  reports         Report[]
+  users           User[]
+  technicianRoles TechnicianRole[]
+}
+
+// A technical role a technician qualifies for, decided by the skills survey.
+// One row per technician per trade unit; a technician can hold several.
+model TechnicianRole {
+  userId      String
+  tradeUnitId String
+  // survey score for this trade unit, 0-100
+  score       Int       @default(0)
+  assignedAt  DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tradeUnit   TradeUnit @relation(fields: [tradeUnitId], references: [id])
+
+  @@id([userId, tradeUnitId])
+  @@index([tradeUnitId])
+}
+
+// Every submitted skills survey is kept (retakes add a new row), so the
+// answers behind each role assignment stay auditable.
+model TechnicianSurvey {
+  id        String   @id @default(uuid())
+  userId    String
+  answers   Json
+  results   Json
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+model IssueCategory {
+  id                 String    @id @default(uuid())
+  name               String    @unique
+  // how serious this kind of problem usually is, 1 (minor) to 4 (dangerous);
+  // one input of the priority score
+  severity           Int       @default(2)
+  defaultTradeUnitId String
+  defaultTradeUnit   TradeUnit @relation(fields: [defaultTradeUnitId], references: [id])
+  reports            Report[]
+}
+
+model Location {
+  id       String   @id @default(uuid())
+  building String
+  floor    String
+  room     String
+  reports  Report[]
+
+  @@unique([building, floor, room])
+}
+
+model Report {
+  id                  String        @id @default(uuid())
+  reporterId          String
+  locationId          String
+  categoryId          String
+  proposedTradeUnitId String
+  description         String
+  urgency             Urgency
+  status              Status        @default(SUBMITTED)
+  createdAt           DateTime      @default(now())
+  feedback            Feedback?
+  jobOrder            JobOrder?
+  category            IssueCategory @relation(fields: [categoryId], references: [id])
+  location            Location      @relation(fields: [locationId], references: [id])
+  proposedTradeUnit   TradeUnit     @relation(fields: [proposedTradeUnitId], references: [id])
+  reporter            User          @relation("Reporter", fields: [reporterId], references: [id])
+  photos              ReportPhoto[]
+  logs                StatusLog[]
+
+  // impact answers from the report form (optional: older app versions do not send them)
+  // affectedPeople: 0 = just me, 1 = 2-10, 2 = 11-50, 3 = more than 50
+  affectedPeople      Int?
+  safetyHazard        Boolean?
+  // true when the room or facility cannot be used because of the problem
+  blocksUse           Boolean?
+  // ---- priority (computed by the priority module; see src/priority)
+  priorityScore       Int?
+  autoPriority        Priority?
+  // effective priority: the automatic one, or the coordinator's override
+  priority            Priority?
+  // true once a coordinator set the priority by hand; recalculation keeps it
+  priorityLocked      Boolean              @default(false)
+  priorityFactors     Json?
+  // why the algorithm wants a human to look (codes, see src/priority)
+  reviewFlags         String[]             @default([])
+  needsReview         Boolean              @default(false)
+  reviewedAt          DateTime?
+  reviewedById        String?
+  reviewedBy          User?                @relation("ReportReviewer", fields: [reviewedById], references: [id])
+  // ---- duplicates: a coordinator-confirmed link to the original report
+  duplicateOfId       String?
+  duplicateOf         Report?              @relation("DuplicateOf", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates          Report[]             @relation("DuplicateOf")
+  duplicateFlags      DuplicateFlag[]      @relation("FlaggedReport")
+  duplicateOfFlags    DuplicateFlag[]      @relation("CandidateReport")
+  // the reporter's signed Job Order Form for this report (one per report)
+  jobOrderForm        JobOrderForm?
+  priorityAdjustments PriorityAdjustment[]
+
+  @@index([priority])
+  @@index([needsReview])
+}
+
+model ReportPhoto {
+  id         String @id @default(uuid())
+  reportId   String
+  storageUrl String
+  report     Report @relation(fields: [reportId], references: [id])
+}
+
+model JobOrder {
+  id               String            @id @default(uuid())
+  jobOrderNo       String            @unique
+  reportId         String            @unique
+  tradeUnitId      String
+  technicianId     String?
+  materialsNote    String?
+  targetDate       DateTime?
+  status           Status            @default(ASSIGNED)
+  // the current technician's answer to the assignment:
+  // PENDING until they accept or decline; DECLINED leaves technicianId empty
+  // until the coordinator reassigns; null when no technician was ever chosen
+  assignmentStatus AssignmentStatus?
+  createdById      String
+  createdAt        DateTime          @default(now())
+  verifiedAt       DateTime?
+  verifiedById     String?
+  report           Report            @relation(fields: [reportId], references: [id])
+  technician       User?             @relation("Technician", fields: [technicianId], references: [id])
+  tradeUnit        TradeUnit         @relation(fields: [tradeUnitId], references: [id])
+  verifiedBy       User?             @relation("Verifier", fields: [verifiedById], references: [id])
+  delays           MaterialDelay[]
+  assignments      JobAssignment[]
+  // set when this job order was cancelled because a coordinator confirmed
+  // its report is the same problem as another report: the work continues
+  // under mergedInto (kept for history, never deleted)
+  mergedIntoId     String?
+  mergedInto       JobOrder?         @relation("MergedInto", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedJobs       JobOrder[]        @relation("MergedInto")
+  cancelledAt      DateTime?
+  cancelReason     String?
+}
+
+// Every time a coordinator offers a job to a technician, and the outcome.
+// Kept as history (declines with reasons, reassignments) for coordinators
+// and for technician performance analytics.
+model JobAssignment {
+  id            String           @id @default(uuid())
+  jobOrderId    String
+  technicianId  String
+  assignedById  String
+  status        AssignmentStatus @default(PENDING)
+  declineReason String?
+  assignedAt    DateTime         @default(now())
+  respondedAt   DateTime?
+  jobOrder      JobOrder         @relation(fields: [jobOrderId], references: [id], onDelete: Cascade)
+  technician    User             @relation("AssignmentTechnician", fields: [technicianId], references: [id])
+  assignedBy    User             @relation("AssignmentAssigner", fields: [assignedById], references: [id])
+
+  @@index([jobOrderId, assignedAt])
+  @@index([technicianId, status])
+}
+
+enum AssignmentStatus {
+  PENDING // waiting for the technician
+  ACCEPTED
+  DECLINED // technician said no (reason required)
+  CANCELLED // coordinator withdrew it or gave the job to someone else
+}
+
+model StatusLog {
+  id          String   @id @default(uuid())
+  reportId    String
+  oldStatus   Status?
+  newStatus   Status
+  remarks     String?
+  photoUrl    String?
+  changedById String
+  createdAt   DateTime @default(now())
+  report      Report   @relation(fields: [reportId], references: [id])
+}
+
+model MaterialDelay {
+  id                String    @id @default(uuid())
+  jobOrderId        String
+  reason            String
+  materialsNote     String?
+  revisedTargetDate DateTime?
+  previousStatus    Status
+  reportedById      String
+  createdAt         DateTime  @default(now())
+  resolvedAt        DateTime?
+  resolvedById      String?
+  jobOrder          JobOrder  @relation(fields: [jobOrderId], references: [id])
+  reportedBy        User      @relation("DelayReporter", fields: [reportedById], references: [id])
+  resolvedBy        User?     @relation("DelayResolver", fields: [resolvedById], references: [id])
+}
+
+model Feedback {
+  id         String   @id @default(uuid())
+  reportId   String   @unique
+  reporterId String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  report     Report   @relation(fields: [reportId], references: [id])
+  reporter   User     @relation(fields: [reporterId], references: [id])
+}
+
+enum Role {
+  REPORTER
+  TECHNICIAN
+  COORDINATOR
+  ADMIN
+}
+
+enum Urgency {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Status {
+  SUBMITTED
+  UNDER_REVIEW
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CLOSED
+  CANCELLED // job orders only: merged into another job order for the same problem
+}
+
+enum Priority {
+  P1 // critical
+  P2 // high
+  P3 // medium
+  P4 // low
+}
+
+// Every manual priority change by a coordinator, with the reason.
+model PriorityAdjustment {
+  id           String    @id @default(uuid())
+  reportId     String
+  fromPriority Priority?
+  toPriority   Priority
+  autoPriority Priority?
+  reason       String
+  adjustedById String
+  createdAt    DateTime  @default(now())
+  report       Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  adjustedBy   User      @relation(fields: [adjustedById], references: [id])
+
+  @@index([reportId, createdAt])
+}
+
+enum DuplicateStatus {
+  OPEN // waiting for a coordinator
+  CONFIRMED // same problem: the report is linked to the candidate
+  DISMISSED // not the same problem
+}
+
+// "This report may be the same problem as that earlier report." Never merges
+// anything; a coordinator confirms (link) or dismisses it.
+model DuplicateFlag {
+  id           String          @id @default(uuid())
+  reportId     String
+  candidateId  String
+  score        Int
+  reasons      Json
+  status       DuplicateStatus @default(OPEN)
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  report       Report          @relation("FlaggedReport", fields: [reportId], references: [id], onDelete: Cascade)
+  candidate    Report          @relation("CandidateReport", fields: [candidateId], references: [id], onDelete: Cascade)
+  reviewedBy   User?           @relation("DuplicateReviewer", fields: [reviewedById], references: [id])
+
+  @@unique([reportId, candidateId])
+  @@index([candidateId])
+  @@index([status])
+}
+
+enum FormStatus {
+  SUBMITTED // waiting for the coordinator
+  RECEIVED // coordinator has seen it
+  APPROVED
+  RETURNED // sent back to the requester for changes (reason in decisionNote)
+}
+
+// The reporter's formal, signed request for work on one of their reports.
+// Requester details are copied at signing time so the signed document never
+// changes when an account is edited later.
+model JobOrderForm {
+  id                String     @id @default(uuid())
+  formNo            String     @unique
+  reportId          String     @unique
+  requesterId       String
+  requesterName     String
+  requesterEmail    String
+  requesterType     String?
+  department        String
+  contactNumber     String
+  workRequested     String
+  locationText      String
+  categoryName      String
+  urgency           Urgency
+  preferredSchedule String?
+  notes             String?
+  // the requester ticked "I certify the information is true"
+  certified         Boolean
+  // signature image in the private storage bucket (never public)
+  signaturePath     String
+  // SHA-256 fingerprints taken when signing: the image, and the signed content
+  signatureHash     String
+  contentHash       String
+  signedAt          DateTime
+  status            FormStatus @default(SUBMITTED)
+  // 1 for the first submission, +1 each time a returned form is resubmitted
+  revision          Int        @default(1)
+  submittedAt       DateTime   @default(now())
+  receivedAt        DateTime?
+  receivedById      String?
+  decidedAt         DateTime?
+  decidedById       String?
+  decisionNote      String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  report            Report     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  requester         User       @relation("FormRequester", fields: [requesterId], references: [id])
+  receivedBy        User?      @relation("FormReceiver", fields: [receivedById], references: [id])
+  decidedBy         User?      @relation("FormDecider", fields: [decidedById], references: [id])
+
+  @@index([status, submittedAt])
+  @@index([requesterId])
+}
