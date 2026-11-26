@@ -8,9 +8,8 @@ import { ThemeToggle } from '../theme';
 export default function LoginPage() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
-  // prefilled for faster testing; remove before real use
-  const [email, setEmail] = useState('coordinator@test.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
