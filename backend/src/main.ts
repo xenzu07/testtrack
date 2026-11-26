@@ -67,6 +67,11 @@ async function bootstrap() {
     );
   }
 
+  // for the host's health check (no login, no database call)
+  app.getHttpAdapter().get('/health', (_req: any, res: any) => {
+    res.json({ ok: true });
+  });
+
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port, '0.0.0.0');
   logger.log(`API listening on port ${port}`);

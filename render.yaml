@@ -1,0 +1,42 @@
+# Render Blueprint for the FaciliTrack API (NestJS).
+# Render dashboard: New > Blueprint > pick this repo and branch.
+# Values marked "sync: false" are secrets: Render asks for them on the first
+# deploy (copy them from backend/.env). Nothing secret is stored in this file.
+services:
+  - type: web
+    name: facilitrack-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    region: singapore
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    startCommand: node dist/main
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SERVE_LEGACY_UPLOADS
+        value: "false"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # the Vercel dashboard address, e.g. https://facilitrack.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_BASE64
+        sync: false
