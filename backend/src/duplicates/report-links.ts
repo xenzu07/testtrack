@@ -255,7 +255,10 @@ export async function linkSameProblem(
   if (!opts.relink) {
     // the date only: a reporter never learns who else reported it
     const reported = await tx.report.findUnique({ where: { id: main.id }, select: { createdAt: true } });
-    const day = reported?.createdAt ? reported.createdAt.toISOString().slice(0, 10) : null;
+    // the campus day (Manila time), not the UTC one
+    const day = reported?.createdAt
+      ? reported.createdAt.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' })
+      : null;
     await tx.statusLog.create({
       data: {
         reportId: copy.id,

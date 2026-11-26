@@ -373,6 +373,19 @@ export class FormsService {
     if (action === 'receive' && f.status === FormStatus.RECEIVED) {
       return this.present(f, true);
     }
+    // the duplicate check comes first: a report that may repeat an earlier one
+    // is decided on (Same problem / Not a duplicate) before its request is
+    // accepted or returned
+    if (action !== 'receive') {
+      const openFlags = await this.prisma.duplicateFlag.count({
+        where: { reportId: f.reportId, status: 'OPEN' },
+      });
+      if (openFlags > 0) {
+        throw new ConflictException(
+          'Check the possible duplicate first: mark it Same problem or Not a duplicate',
+        );
+      }
+    }
     const now = new Date();
     const from: FormStatus[] =
       action === 'receive'

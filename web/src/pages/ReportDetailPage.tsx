@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api, errorMessage, mediaUrl } from '../api';
 import {
   formatDate,
+  formatDay,
   formatDateTime,
   isOverdue,
   isProgressUpdate,
@@ -61,7 +62,7 @@ function linkedText(l: StatusLog, report: Report): string | null {
   const main = report.duplicateOf;
   if (!main || !(l.remarks ?? '').startsWith('Linked to an earlier report')) return null;
   const what = main.category?.name ?? 'an earlier report';
-  const when = main.createdAt ? ` reported ${formatDate(main.createdAt)}` : '';
+  const when = main.createdAt ? ` reported ${formatDay(main.createdAt)}` : '';
   const who = main.reporter ? ` by ${main.reporter.fullName}` : '';
   return `Same problem as ${what}${when}${who}. Work continues there.`;
 }
@@ -94,12 +95,15 @@ export default function ReportDetailPage() {
       }
       // ... and marks its signed Job Order Form received
       const form = r.data.jobOrderForm;
-      if (form?.status === 'SUBMITTED' && !r.data.duplicateOfId) {
+      if (form?.status === 'SUBMITTED' && !r.data.duplicateOfId && !receiving.has(form.id)) {
+        receiving.add(form.id);
         try {
           await api.post(`/job-order-forms/${form.id}/receive`);
           changed = true;
         } catch {
           // already received meanwhile, or not allowed: nothing to do
+        } finally {
+          receiving.delete(form.id);
         }
       }
       if (changed) r = await api.get<Report>(`/reports/${id}`);
@@ -239,6 +243,9 @@ const yesNo = (v: boolean | null) => (v === null ? 'Not answered' : v ? 'Yes' : 
 /* the step-by-step panel: one stage of the report's flow at a time        */
 /* ====================================================================== */
 
+// forms being marked received right now (one request per form)
+const receiving = new Set<string>();
+
 const LockIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <rect x="5" y="11" width="14" height="9" rx="2" />
@@ -346,10 +353,10 @@ function StagePanel({
 
 /* ---------- step 1: the reporter's signed job request ---------- */
 
-// Step 1 card. When the system suspects the report repeats an earlier one,
-// a "Possible duplicates" tab sits next to the job request and opens first:
-// Same problem links and closes the report; Not a duplicate returns to the
-// normal flow.
+// Step 1 card, in sequence. When the system suspects the report repeats an
+// earlier one, the duplicate check comes first and is all that shows: Same
+// problem links and closes the report (no job request to accept); Not a
+// duplicate moves on to accepting or returning the job request.
 function JobRequestCard({
   report,
   onDone,
@@ -365,55 +372,50 @@ function JobRequestCard({
   lead?: ReactNode;
   children?: ReactNode;
 }) {
-  const [openDups, setOpenDups] = useState(0);
-  const [tab, setTab] = useState<'req' | 'dup' | null>(null);
-  const showTabs = openDups > 0;
-  // the duplicates tab opens first, once, when a suggestion is found
-  useEffect(() => {
-    if (openDups > 0 && tab === null) setTab('dup');
-  }, [openDups, tab]);
-  const current = showTabs ? (tab ?? 'dup') : 'req';
+  // null until the suggestions have loaded
+  const [openDups, setOpenDups] = useState<number | null>(null);
+  const [cleared, setCleared] = useState(false);
+  const onOpenCount = useCallback((n: number) => {
+    setOpenDups((prev) => {
+      if (prev !== null && prev > 0 && n === 0) setCleared(true);
+      return n;
+    });
+  }, []);
+  const checking = openDups !== null && openDups > 0;
 
   return (
-    <div className={`card stage${showTabs ? ' stage-with-tabs' : ''}`}>
-      <StageTop step={1} label="Job request">
-        {showTabs ? <ActionNeeded /> : tag}
+    <div className="card stage">
+      <StageTop step={1} label={checking ? 'Duplicate check' : 'Job request'}>
+        {checking ? <ActionNeeded /> : openDups === null ? null : tag}
       </StageTop>
-      {showTabs && (
-        <div className="tabs stage-tab-bar" role="tablist" aria-label="Job request">
-          <button
-            type="button"
-            role="tab"
-            id="tab-req"
-            aria-selected={current === 'req'}
-            aria-controls="panel-req"
-            className={`tab${current === 'req' ? ' tab-active' : ''}`}
-            onClick={() => setTab('req')}
-          >
-            Job request
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id="tab-dup"
-            aria-selected={current === 'dup'}
-            aria-controls="panel-dup"
-            className={`tab${current === 'dup' ? ' tab-active' : ''}`}
-            onClick={() => setTab('dup')}
-          >
-            Possible duplicates <span className="tab-count tab-count-alert">{openDups}</span>
-          </button>
-        </div>
+      {openDups === null && <p className="muted">Checking for possible duplicates...</p>}
+      {checking && (
+        <>
+          <h2>Is this a duplicate?</h2>
+        </>
       )}
-      <div role={showTabs ? 'tabpanel' : undefined} id="panel-req" hidden={current !== 'req'}>
-        <h2>{title}</h2>
-        {lead && <p className="lead">{lead}</p>}
-        {children}
-      </div>
       {/* always mounted: it finds the suggestions and reports how many are open */}
-      <div role="tabpanel" id="panel-dup" aria-labelledby="tab-dup" hidden={current !== 'dup'} className="stage-dup-panel">
-        <DuplicatesPanel report={report} onChanged={onDone} onOpenCount={setOpenDups} />
+      <div hidden={!checking} className="stage-dup-panel">
+        <DuplicatesPanel report={report} onChanged={onDone} onOpenCount={onOpenCount} />
       </div>
+      {checking && (
+        <Locked>Accepting or returning the job request unlocks after the duplicate check.</Locked>
+      )}
+      {openDups === 0 && (
+        <>
+          {cleared && (
+            <div className="done-strip" style={{ margin: '6px 0 14px' }}>
+              <CheckIcon />
+              <span>
+                <b>Duplicate check done</b> · not a duplicate
+              </span>
+            </div>
+          )}
+          <h2>{title}</h2>
+          {lead && <p className="lead">{lead}</p>}
+          {children}
+        </>
+      )}
     </div>
   );
 }
@@ -710,7 +712,7 @@ function LinkedStage({ report, onDone }: { report: Report; onDone: () => void })
           </div>
           <span className="muted small">
             {[
-              main.createdAt && `Reported ${formatDate(main.createdAt)}${main.reporter ? ` by ${main.reporter.fullName}` : ''}`,
+              main.createdAt && `Reported ${formatDay(main.createdAt)}${main.reporter ? ` by ${main.reporter.fullName}` : ''}`,
               main.jobOrder?.jobOrderNo,
               main.jobOrder?.technician?.fullName,
             ]
@@ -802,7 +804,7 @@ function FormSection({ report }: { report: Report }) {
   return (
     <div className="section">
       <h3>Job Order Form</h3>
-      <FormSummaryRow form={form} line={`Signed by ${report.reporter.fullName} on ${formatDate(form.submittedAt)}`} />
+      <FormSummaryRow form={form} line={`Signed by ${report.reporter.fullName} on ${formatDay(form.submittedAt)}`} />
       <div className="btn-row">
         <Link className="btn btn-small" to={`/forms/${form.id}`}>
           Open the form

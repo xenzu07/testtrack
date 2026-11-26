@@ -59,6 +59,13 @@ export function formatDateTime(iso: string): string {
 }
 
 // target dates are stored as UTC midnight, so format them in UTC
+/** The local day of a moment in time ("Nov 27, 2026"), e.g. when something was reported. */
+export function formatDay(iso: string | null): string {
+  if (!iso) return 'Not set';
+  return new Date(iso).toLocaleDateString('en-PH', { dateStyle: 'medium' });
+}
+
+/** A calendar date stored as UTC midnight (target dates). */
 export function formatDate(iso: string | null): string {
   if (!iso) return 'Not set';
   return new Date(iso).toLocaleDateString('en-PH', {

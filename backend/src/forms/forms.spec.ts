@@ -168,11 +168,27 @@ describe('FormsService rules', () => {
       jobOrderForm: {
         findUnique: jest.fn().mockResolvedValue({ id: 'f1', formNo: 'JOF-1', status: FormStatus.APPROVED, report: { status: 'ASSIGNED' } }),
       },
+      duplicateFlag: { count: jest.fn().mockResolvedValue(0) },
       user: { findUnique: jest.fn().mockResolvedValue({ fullName: 'C' }) },
       $transaction: jest.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
     });
     await expect(svc.decide('f1', 'c1', 'return', 'Please add the room number')).rejects.toThrow('already approved');
     expect(tx.statusLog.create).not.toHaveBeenCalled();
+  });
+
+  it('the duplicate check comes before accepting or returning the request', async () => {
+    const tx = { jobOrderForm: { updateMany: jest.fn() }, statusLog: { create: jest.fn() } };
+    const { svc } = make(null, {
+      jobOrderForm: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'f1', formNo: 'JOF-1', reportId: 'r1', status: FormStatus.RECEIVED, report: { status: 'UNDER_REVIEW' } }),
+      },
+      duplicateFlag: { count: jest.fn().mockResolvedValue(1) },
+      user: { findUnique: jest.fn().mockResolvedValue({ fullName: 'C' }) },
+      $transaction: jest.fn((fn: (t: typeof tx) => unknown) => fn(tx)),
+    });
+    await expect(svc.decide('f1', 'c1', 'approve')).rejects.toThrow(/possible duplicate first/);
+    await expect(svc.decide('f1', 'c1', 'return', 'x')).rejects.toThrow(/possible duplicate first/);
+    expect(tx.jobOrderForm.updateMany).not.toHaveBeenCalled();
   });
 
   it('other reporters cannot view a form; coordinators can', async () => {

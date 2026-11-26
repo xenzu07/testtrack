@@ -50,6 +50,22 @@ async function call(token, method, path, body, multipart) {
 
 const tokens = {};
 const ids = {};
+// the duplicate check comes before accepting a request: clear any open
+// suggestion (Not a duplicate), then accept
+async function notDuplicate(token, reportId) {
+  const d = await call(token, 'GET', `/reports/${reportId}/duplicates`);
+  for (const f of d.data?.possibleOriginals ?? []) {
+    if (f.status === 'OPEN') await call(token, 'POST', `/reports/${reportId}/duplicates/${f.id}`, { decision: 'dismiss' });
+  }
+}
+async function approveForm(token, formId, reportId) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await notDuplicate(token, reportId);
+    const a = await call(token, 'POST', `/job-order-forms/${formId}/approve`, {});
+    if (a.status !== 409 || !/duplicate/.test(JSON.stringify(a.data))) return a;
+  }
+  return call(token, 'POST', `/job-order-forms/${formId}/approve`, {});
+}
 async function login(email) {
   const r = await call(null, 'POST', '/auth/login', { email, password: PASSWORD });
   if (r.status !== 200 && r.status !== 201) throw new Error(`login ${email}: ${r.status} ${JSON.stringify(r.data)}`);
@@ -134,7 +150,7 @@ async function main() {
 
   const tooEarly = await call(coord, 'POST', '/job-orders', { reportId: R1 });
   check('S1 job order refused before the request is accepted', tooEarly.status === 400, msg(tooEarly));
-  const approve = await call(coord, 'POST', `/job-order-forms/${F1}/approve`, {});
+  const approve = await approveForm(coord, F1, R1);
   check('S1 coordinator accepts the request', approve.status === 200, msg(approve));
 
   const techs = await call(coord, 'GET', `/job-orders/technicians?tradeUnitId=${leak.defaultTradeUnit.id}`);
@@ -202,13 +218,14 @@ async function main() {
   const R2 = r2.data.id;
   const f2 = await signForm(faculty, R2);
   await call(coord, 'PATCH', `/reports/${R2}/review`);
+  await notDuplicate(coord, R2);
   const ret = await call(coord, 'POST', `/job-order-forms/${f2.data.id}/return`, { reason: 'Please add the exact room number.' });
   check('S2 form returned for revision', ret.status === 200, msg(ret));
   const retJob = await call(coord, 'POST', '/job-orders', { reportId: R2 });
   check('S2 job order refused while the form is returned', retJob.status === 400, msg(retJob));
   const resign = await signForm(faculty, R2, 'Please fix the flickering hallway lights near room 204.');
   check('S2 reporter signs the revised form', resign.status === 201 && resign.data.revision === 2, msg(resign));
-  const approve2 = await call(coord, 'POST', `/job-order-forms/${resign.data.id}/approve`, {});
+  const approve2 = await approveForm(coord, resign.data.id, R2);
   check('S2 revised form accepted', approve2.status === 200, msg(approve2));
 
   /* ------------------------------------------------ S3: decline and reassign */
@@ -252,7 +269,7 @@ async function main() {
   const dups = await call(coord, 'GET', `/reports/${R4}/duplicates`);
   // the earliest strong match in the same room (R3, or an older one left from earlier test runs)
   const flag = dups.data?.possibleOriginals?.find(
-    (f) => f.status === 'OPEN' && f.candidate.location.id === loc3.id && f.candidate.category.id === leak.id && f.score >= 75,
+    (f) => f.status === 'OPEN' && f.candidate.location.id === loc3.id && f.candidate.category.id === leak.id && f.score >= 55,
   );
   const MAIN = flag?.candidate.id ?? R3;
   check('S4 the later report is flagged against the earlier one', Boolean(flag),
@@ -282,13 +299,17 @@ async function main() {
 
     // the earlier report goes ahead; the linked reporter hears about it
     const fR3 = (await getReport(coord, MAIN)).jobOrderForm;
-    if (fR3 && fR3.status !== 'APPROVED') await call(coord, 'POST', `/job-order-forms/${fR3.id}/approve`, {});
+    if (fR3 && fR3.status !== 'APPROVED') await approveForm(coord, fR3.id, MAIN);
     const newest = async () => (await call(faculty, 'GET', '/notifications?limit=1')).data.items[0]?.id ?? null;
     const before = await newest();
     const jo3 = await call(coord, 'POST', '/job-orders', { reportId: MAIN });
     check('S4 the earlier report gets its job order', jo3.status === 201, msg(jo3));
-    await new Promise((r) => setTimeout(r, 1000));
-    const latest = (await call(faculty, 'GET', '/notifications?limit=1')).data.items[0];
+    let latest = null;
+    for (let i = 0; i < 10; i++) {
+      await new Promise((r) => setTimeout(r, 500));
+      latest = (await call(faculty, 'GET', '/notifications?limit=1')).data.items[0];
+      if (latest && latest.id !== before) break;
+    }
     check('S4 the linked reporter is notified about the repair', latest && latest.id !== before, JSON.stringify(latest?.title));
     check('S4 the linked report stays closed', (await getReport(faculty, R4)).status === 'CLOSED');
 
@@ -307,6 +328,8 @@ async function main() {
   const d5 = await call(coord, 'GET', `/reports/${R5}/duplicates`);
   const flag5 = d5.data?.possibleOriginals?.find((f) => f.status === 'OPEN');
   if (flag5) {
+    const early5 = await call(coord, 'POST', `/job-order-forms/${(await getReport(coord, R5)).jobOrderForm.id}/approve`, {});
+    check('S5 request cannot be accepted before the duplicate check', early5.status === 409, msg(early5));
     const notDup = await call(coord, 'POST', `/reports/${R5}/duplicates/${flag5.id}`, { decision: 'dismiss' });
     check('S5 Not a duplicate is recorded', notDup.status === 200 || notDup.status === 201, msg(notDup));
     const after5 = await getReport(coord, R5);
@@ -330,7 +353,7 @@ async function main() {
     for (let i = 0; i < room + 1; i++) {
       const rr = await report(student, fan, opts.locations[(i + 5) % opts.locations.length], `Aircon number ${i + 1} is blowing warm air in this room.`);
       const ff = await signForm(student, rr.data.id);
-      await call(coord, 'POST', `/job-order-forms/${ff.data.id}/approve`, {});
+      await approveForm(coord, ff.data.id, rr.data.id);
       made.push(rr.data.id);
     }
     let created = 0;

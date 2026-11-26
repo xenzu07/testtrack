@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api';
-import { PRIORITIES, PRIORITY_LABEL, REVIEW_FLAG_LABEL, formatDate, formatDateTime, locationText } from '../format';
+import { PRIORITIES, PRIORITY_LABEL, REVIEW_FLAG_LABEL, formatDay, formatDateTime, locationText } from '../format';
 import { Flag, StatusBadge } from '../ui';
 import type {
   DuplicateFlagView,
@@ -422,9 +422,11 @@ export function DuplicatesPanel({
         (!data.duplicateOfId && data.possibleCopies.some((f) => f.status === 'OPEN')) ||
         data.linkedCopies.length > 0),
   );
+  // reported once the suggestions have loaded, so callers can wait for it
+  const loaded = data !== null;
   useEffect(() => {
-    onOpenCount?.(openCount);
-  }, [onOpenCount, openCount]);
+    if (loaded) onOpenCount?.(openCount);
+  }, [onOpenCount, openCount, loaded]);
   useEffect(() => {
     onHasContent?.(hasContent);
   }, [onHasContent, hasContent]);
@@ -488,7 +490,7 @@ export function DuplicatesPanel({
           </div>
           <span className="muted small">
             {[
-              `Reported ${formatDate(f.candidate.createdAt)}${f.candidate.reporter ? ` by ${f.candidate.reporter.fullName}` : ''}`,
+              `Reported ${formatDay(f.candidate.createdAt)}${f.candidate.reporter ? ` by ${f.candidate.reporter.fullName}` : ''}`,
               f.candidate.jobOrder?.jobOrderNo,
               f.reasons.reasons.join(', ').toLowerCase(),
               daysApart(f.candidate.createdAt, report.createdAt),
