@@ -95,31 +95,23 @@ export interface LinkOutcome {
   reporterIds: string[];
 }
 
-// Mirrors a main report's new status onto its linked copies, with a history
-// entry each. Returns the copies' reporters (to notify them).
+// The reporters of a main report's linked copies, to tell them about a step
+// in the repair. (Copies used to mirror the main status; they are now closed
+// when linked, so nothing is written here.)
 export async function syncLinkedCopies(
   tx: Tx,
   mainReportId: string,
-  status: Status,
-  userId: string,
-  note: string,
+  _status: Status,
+  _userId: string,
+  _note: string,
 ): Promise<string[]> {
+  // Linked copies are closed when linked and keep that status: the repair is
+  // followed on the main report. Their reporters are still told about every
+  // step, so they are returned for the live updates.
   const copies = await tx.report.findMany({
-    where: { duplicateOfId: mainReportId, status: { not: status } },
-    select: { id: true, status: true, reporterId: true },
+    where: { duplicateOfId: mainReportId },
+    select: { reporterId: true },
   });
-  for (const c of copies) {
-    await tx.report.update({ where: { id: c.id }, data: { status } });
-    await tx.statusLog.create({
-      data: {
-        reportId: c.id,
-        oldStatus: c.status,
-        newStatus: status,
-        remarks: `Update from the linked report${note ? ` (${note})` : ''}: now ${statusText(status).toLowerCase()}`,
-        changedById: userId,
-      },
-    });
-  }
   return copies.map((c) => c.reporterId);
 }
 
@@ -240,11 +232,14 @@ export async function linkSameProblem(
     };
   }
 
-  // link, and move any reports already linked to the copy onto the main report
+  // link and close it: the work continues under the main report, so the copy
+  // needs nothing more (its reporter still gets the repair's updates, see
+  // linkedReporterIds in the notification rules). Then move any reports
+  // already linked to the copy onto the main report.
   await tx.report.update({
     where: { id: copy.id },
     // its priority is no longer reviewed: the main report's is the one that counts
-    data: { duplicateOfId: main.id, needsReview: false },
+    data: { duplicateOfId: main.id, needsReview: false, status: Status.CLOSED },
   });
   const moved = await tx.report.findMany({
     where: { duplicateOfId: copy.id },
@@ -257,25 +252,25 @@ export async function linkSameProblem(
   });
   await moveOpenFlagsToMain(tx, copy.id, main.id);
 
-  if (!opts.relink)
+  if (!opts.relink) {
+    // the date only: a reporter never learns who else reported it
+    const reported = await tx.report.findUnique({ where: { id: main.id }, select: { createdAt: true } });
+    const day = reported?.createdAt ? reported.createdAt.toISOString().slice(0, 10) : null;
     await tx.statusLog.create({
       data: {
         reportId: copy.id,
         oldStatus: copy.status,
-        newStatus: copy.status,
-        remarks: keep
-          ? `Linked to an earlier report of the same problem, handled under job order ${keep.jobOrderNo}`
-          : 'Linked to an earlier report of the same problem, which is already being handled',
+        newStatus: Status.CLOSED,
+        remarks:
+          `Linked to an earlier report of the same problem${day ? ` (reported ${day})` : ''}. ` +
+          (keep ? `Work continues there under job order ${keep.jobOrderNo}.` : 'Work continues there.'),
         changedById: userId,
       },
     });
+  }
 
-  // every linked report now shows the main report's progress
-  const mainStatus = (await tx.report.findUnique({
-    where: { id: main.id },
-    select: { status: true },
-  }))!.status;
-  (await syncLinkedCopies(tx, main.id, mainStatus, userId, '')).forEach((r) =>
+  // every reporter of the problem hears about the link
+  (await syncLinkedCopies(tx, main.id, Status.CLOSED, userId, '')).forEach((r) =>
     reporterIds.add(r),
   );
 

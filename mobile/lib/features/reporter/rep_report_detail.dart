@@ -103,13 +103,18 @@ class _RepReportDetailScreenState extends State<RepReportDetailScreen> {
         Column(children: [
           Center(
             child: Container(
-              height: 24,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
+              constraints: const BoxConstraints(minHeight: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(color: c.acs, borderRadius: BorderRadius.circular(999)),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 V2Icon(V2Icons.check, size: 13, color: c.ac),
                 const SizedBox(width: 6),
-                Text('Verified by the GSO', style: v2Text(size: 12, weight: FontWeight.w600, color: c.ac, height: 1)),
+                Flexible(
+                  child: Text('Verified by the GSO',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: v2Text(size: 12, weight: FontWeight.w600, color: c.ac, height: 1)),
+                ),
               ]),
             ),
           ),
@@ -245,12 +250,18 @@ class _RepReportDetailScreenState extends State<RepReportDetailScreen> {
         const SizedBox(height: 6),
         H1('${r['category']['name']}', size: 22),
       ]),
-      _progressCard(r),
-      if (linked)
-        Note.text(
-            'Someone reported the same problem earlier, so this report is handled together with theirs. '
-            'You still get every update here.',
-            icon: V2Icons.info),
+      if (linked) ...[
+        _linkedCard(),
+        // the repair is followed on the earlier report: its status, its job
+        _progressCard({...r, 'status': r['duplicateOf']?['status'] ?? r['status']}, linked: true),
+        MCard(
+          child: Column(children: [
+            if (f != null) FactLine(V2Icons.doc, 'Job Order Form ${f['formNo']} · closed, no job order needed'),
+            const FactLine(V2Icons.check, 'Your report is closed as a duplicate'),
+          ]),
+        ),
+      ] else
+        _progressCard(r),
       if (needsRating(r))
         MCard(
           borderColor: c.acl,
@@ -271,6 +282,7 @@ class _RepReportDetailScreenState extends State<RepReportDetailScreen> {
           V2Timeline(_updates(r)),
         ]),
       ),
+      if (!linked)
       MCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const H2('What you reported'),
@@ -283,7 +295,35 @@ class _RepReportDetailScreenState extends State<RepReportDetailScreen> {
     ]);
   }
 
-  Widget _progressCard(Map r) {
+  Widget _linkedCard() {
+    final c = context.v;
+    return MCard(
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const IconSquare(V2Icons.link, Color(0xFF2F6FE0)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: Text('Linked to an earlier report',
+                    style: v2Text(size: 15, weight: FontWeight.w700, color: c.tx, height: 1.35)),
+              ),
+              const SizedBox(width: 8),
+              const StatusDot('Linked', StKind.tech),
+            ]),
+            const SizedBox(height: 4),
+            const Sub(
+              "The same problem was already reported and is being handled. Your report was joined to it, "
+              "so there's nothing more to do. You'll get updates on the repair.",
+              size: 13.5,
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _progressCard(Map r, {bool linked = false}) {
     final c = context.v;
     final status = r['status'] as String;
     final job = activeJob(r);
@@ -295,7 +335,7 @@ class _RepReportDetailScreenState extends State<RepReportDetailScreen> {
     final headline = switch (status) {
       'SUBMITTED' => 'Sent to the GSO',
       'UNDER_REVIEW' => 'The GSO is reviewing it',
-      'ASSIGNED' => first != null ? '$first will fix it' : 'Waiting for a technician',
+      'ASSIGNED' => first != null ? (linked ? '$first is on it' : '$first will fix it') : 'Waiting for a technician',
       'IN_PROGRESS' => first != null ? '$first is fixing it' : 'Being fixed',
       'DELAYED' => 'Paused for now',
       'COMPLETED' => first != null ? '$first finished · the GSO is checking' : 'Finished · the GSO is checking',
@@ -307,6 +347,10 @@ class _RepReportDetailScreenState extends State<RepReportDetailScreen> {
 
     return MCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (linked) ...[
+          const Meta('PROGRESS OF THE REPAIR', weight: FontWeight.w700),
+          const SizedBox(height: 10),
+        ],
         Row(children: [
           tech != null
               ? Avatar(tech, size: 44)
@@ -340,14 +384,27 @@ class _RepReportDetailScreenState extends State<RepReportDetailScreen> {
           ],
         ]),
         const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          for (var i = 0; i < _steps.length; i++)
-            Text(_steps[i],
-                style: v2Text(
-                    size: 12,
-                    weight: i == step ? FontWeight.w700 : FontWeight.w400,
-                    color: i == step ? c.tx : c.tx3)),
+        // one label under each bar, shrunk to fit a narrow phone
+        Row(children: [
+          for (var i = 0; i < _steps.length; i++) ...[
+            if (i > 0) const SizedBox(width: 6),
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(_steps[i],
+                    maxLines: 1,
+                    style: v2Text(
+                        size: 12,
+                        weight: i == step ? FontWeight.w700 : FontWeight.w400,
+                        color: i == step ? c.tx : c.tx3)),
+              ),
+            ),
+          ],
         ]),
+        if (linked) ...[
+          const SizedBox(height: 12),
+          const Meta("You'll be notified as the repair moves along."),
+        ],
       ]),
     );
   }
@@ -418,13 +475,31 @@ class _RepReportDetailScreenState extends State<RepReportDetailScreen> {
       String title;
       Color dot;
       String? text = remarks;
-      if (from == null) {
+      final said = remarks ?? '';
+      if (said.startsWith('Linked to an earlier report')) {
+        title = 'Linked to an earlier report';
+        dot = c.blu;
+        text = "The GSO found it's the same problem as an earlier report.";
+      } else if (said.startsWith('Job Order Form') && said.contains(' approved')) {
+        title = 'Request accepted';
+        dot = c.acf;
+        text = 'The GSO accepted your Job Order Form.';
+      } else if (said.startsWith('Job Order Form') && said.contains('returned for changes')) {
+        title = 'Form returned';
+        dot = c.red;
+        text = said.replaceFirst(RegExp(r'^Job Order Form \S+ returned for changes: '), 'The GSO asked: ');
+      } else if (said.startsWith('Job Order Form') && said.contains('received by the GSO')) {
+        title = 'Form received';
+        dot = c.gry;
+        text = 'The GSO received your Job Order Form.';
+      } else if (from == null) {
         title = 'Reported';
         dot = c.gry;
-        text = 'Thanks for reporting.';
+        text = r['jobOrderForm'] != null ? 'Report and signed form sent.' : 'Thanks for reporting.';
       } else if (to == 'UNDER_REVIEW') {
         title = 'Under review';
-        dot = c.gry;
+        dot = c.vio;
+        if (said.startsWith('Opened by')) text = 'The GSO opened your report.';
       } else if (to == 'ASSIGNED' && from != 'ASSIGNED') {
         title = 'Assigned';
         dot = c.blu;

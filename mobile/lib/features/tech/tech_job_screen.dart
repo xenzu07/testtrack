@@ -598,7 +598,7 @@ class _TechJobScreenState extends State<TechJobScreen> {
               V2Icon(V2Icons.box, size: 20, color: c.amb),
               const SizedBox(width: 12),
               Expanded(child: Text('Waiting on materials?', style: v2Text(size: 14.5, weight: FontWeight.w700, color: c.tx))),
-              V2Button('Report a delay', size: BtnSize.sm, onPressed: delaySheet),
+              Flexible(child: V2Button('Report a delay', size: BtnSize.sm, onPressed: delaySheet)),
             ]),
           ),
         ],

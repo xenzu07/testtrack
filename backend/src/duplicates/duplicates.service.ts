@@ -29,6 +29,8 @@ const summary = {
   duplicateOfId: true,
   category: { select: { id: true, name: true } },
   location: true,
+  // coordinators only (the duplicates endpoints are not open to reporters)
+  reporter: { select: { fullName: true } },
   jobOrder: {
     select: {
       id: true,

@@ -20,9 +20,7 @@ class SentResult {
 
 /// New report in four short steps: where, what, how serious, sign the form.
 class RepNewReportScreen extends StatefulWidget {
-  /// recent places from the reporter's own reports, newest first
-  final List<Map> recent;
-  const RepNewReportScreen({super.key, this.recent = const []});
+  const RepNewReportScreen({super.key});
 
   @override
   State<RepNewReportScreen> createState() => _RepNewReportScreenState();
@@ -102,12 +100,6 @@ class _RepNewReportScreenState extends State<RepNewReportScreen> {
         2 => hazard != null && usable != null && affected != null,
         _ => true,
       };
-
-  void choosePlace(Map l) => setState(() {
-        building = l['building'] as String;
-        floor = l['floor'] as String;
-        locationId = l['id'] as String;
-      });
 
   Future<void> cancel() async {
     final ok = step == 0 && categoryId == null
@@ -223,7 +215,9 @@ class _RepNewReportScreenState extends State<RepNewReportScreen> {
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
                               child: StepBars(total: 4, done: step + 1),
                             ),
-                            Expanded(child: [_where, _what, _impact, _sign][step]()),
+                            // keyed by step: each step opens at the top, not at the previous
+                            // step's scroll position
+                            Expanded(child: KeyedSubtree(key: ValueKey(step), child: [_where, _what, _impact, _sign][step]())),
                           ]),
             bottomNavigationBar: loading || loadError != null
                 ? null
@@ -256,17 +250,8 @@ class _RepNewReportScreenState extends State<RepNewReportScreen> {
   /* -------------------------------------------------------------- 1 where */
 
   Widget _where() {
-    final recent = widget.recent.where((l) => locations.any((x) => x['id'] == l['id'])).take(3).toList();
     return MBody(bottom: 24, children: [
       const H1('Where is the problem?', size: 22),
-      if (recent.isNotEmpty)
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Meta('RECENT', weight: FontWeight.w700),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final l in recent) V2Chip(placeShort(l), on: locationId == l['id'], onTap: () => choosePlace(l)),
-          ]),
-        ]),
       CardRows([
         _pick(V2Icons.building, 'Building', building, () async {
           final v = await _choose('Building', buildings);

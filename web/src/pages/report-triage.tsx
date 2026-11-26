@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api';
-import { PRIORITIES, PRIORITY_LABEL, REVIEW_FLAG_LABEL, formatDateTime, locationText, statusLabel } from '../format';
+import { PRIORITIES, PRIORITY_LABEL, REVIEW_FLAG_LABEL, formatDate, formatDateTime, locationText } from '../format';
 import { Flag, StatusBadge } from '../ui';
 import type {
   DuplicateFlagView,
@@ -455,9 +455,9 @@ export function DuplicatesPanel({
     <>
       {nothing && <p className="muted">No other report looks like the same problem.</p>}
       {open.length > 0 && (
-        <p className="muted">
-          Suggestions only. Confirming links this report to the earlier one so it is handled there,
-          with one job order, and the reporter is told.
+        <p className="muted" style={{ marginTop: 0 }}>
+          Detected by the system. Same problem links this report to the earlier one and closes it
+          right away; no job order is created for it.
         </p>
       )}
 
@@ -487,11 +487,15 @@ export function DuplicatesPanel({
             </span>
           </div>
           <span className="muted small">
-            Reported {formatDateTime(f.candidate.createdAt)} · {statusLabel(f.candidate.status)}
-            {f.candidate.jobOrder && ` · ${f.candidate.jobOrder.jobOrderNo}`}
-            {f.reasons.reasons.length > 0 && ` · ${f.reasons.reasons.join(', ')}`}
+            {[
+              `Reported ${formatDate(f.candidate.createdAt)}${f.candidate.reporter ? ` by ${f.candidate.reporter.fullName}` : ''}`,
+              f.candidate.jobOrder?.jobOrderNo,
+              f.reasons.reasons.join(', ').toLowerCase(),
+              daysApart(f.candidate.createdAt, report.createdAt),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </span>
-          <span className="small">{f.candidate.description}</span>
           {theirJob(f) && !myJob && <span className="small muted">Will follow {theirJob(f)!.jobOrderNo}</span>}
           {myJob && !theirJob(f) && <span className="small muted">That report will follow {myJob.jobOrderNo}</span>}
           <p className="dup-q">Is this the same problem?</p>
@@ -632,4 +636,10 @@ export function RecommendationBox({
       <span className="small muted">Preselected below. Change it if you know better.</span>
     </div>
   );
+}
+
+// "1 day apart", "3 days apart" or "same day"
+function daysApart(a: string, b: string): string {
+  const d = Math.round(Math.abs(new Date(b).getTime() - new Date(a).getTime()) / 86_400_000);
+  return d === 0 ? 'same day' : `${d} day${d === 1 ? '' : 's'} apart`;
 }

@@ -122,6 +122,7 @@ describe('creating a job order with a technician', () => {
           proposedTradeUnitId: 'u1',
           proposedTradeUnit: { id: 'u1', name: 'Plumbing' },
           reporterId: 'r1',
+          jobOrderForm: { formNo: 'JOF-2026-0001', status: 'APPROVED' },
         }),
       },
       tradeUnit: { findUnique: jest.fn().mockResolvedValue({ id: 'u1', name: 'Plumbing' }) },
@@ -155,6 +156,41 @@ describe('creating a job order with a technician', () => {
   });
 });
 
+describe('the Job Order Form gates the job order', () => {
+  function setup(form: object | null) {
+    const prisma = {
+      report: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'rep1',
+          status: Status.UNDER_REVIEW,
+          jobOrder: null,
+          duplicateOfId: null,
+          proposedTradeUnitId: 'u1',
+          proposedTradeUnit: { id: 'u1', name: 'Plumbing' },
+          jobOrderForm: form,
+        }),
+      },
+      tradeUnit: { findUnique: jest.fn() },
+      $transaction: jest.fn(),
+    };
+    const svc = new JobOrdersService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+    return { svc, prisma };
+  }
+
+  it('refuses while the form is only sent or received', async () => {
+    for (const status of ['SUBMITTED', 'RECEIVED', 'RETURNED']) {
+      const { svc, prisma } = setup({ formNo: 'JOF-2026-0061', status });
+      await expect(svc.create('coord', { reportId: 'rep1' } as never)).rejects.toThrow(/Accept the reporter's Job Order Form/);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    }
+  });
+
+  it('refuses when no form was signed', async () => {
+    const { svc } = setup(null);
+    await expect(svc.create('coord', { reportId: 'rep1' } as never)).rejects.toThrow(/has not signed a Job Order Form/);
+  });
+});
+
 /* ------------------------------------------------------------ lists */
 
 describe('lists leave out duplicates', () => {
@@ -177,6 +213,14 @@ describe('lists leave out duplicates', () => {
     const svc = new ReportsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
     await svc.findAll({});
     expect(prisma.report.findMany.mock.calls[0][0].where.duplicateOfId).toBeNull();
+  });
+
+  it("a reporter never sees who reported the earlier, linked report", async () => {
+    const reports = [{ id: 'mine', duplicateOfId: 'theirs', duplicateOf: { id: 'theirs', reporter: { fullName: 'Carlo Dizon' } } }];
+    const prisma = { report: { findMany: jest.fn().mockResolvedValue(reports) } };
+    const svc = new ReportsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+    const out = (await svc.findMine('r1')) as { duplicateOf: Record<string, unknown> }[];
+    expect(out[0].duplicateOf).toEqual({ id: 'theirs' });
   });
 
   it("a reporter's repeat of their own report is shown once; a link to someone else's report stays", async () => {

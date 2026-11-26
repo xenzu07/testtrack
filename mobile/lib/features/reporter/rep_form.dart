@@ -120,14 +120,6 @@ class FormFields extends StatelessWidget {
               V2Input(controller: d.work, enabled: enabled, multiline: true, maxLength: 2000, onChanged: (_) => onChanged()),
               _error(context, d.tried && !d.workOk, 'Describe the work (at least 10 characters)'),
             ])),
-      V2Field('Best time for the work',
-          child: Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final s in scheduleChoices)
-              V2Chip(s, on: d.schedule == s, onTap: () {
-                d.schedule = d.schedule == s ? null : s;
-                onChanged();
-              }),
-          ])),
       V2Field('Signature',
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             SignaturePad(
@@ -432,7 +424,7 @@ class _RepFormDetailScreenState extends State<RepFormDetailScreen> {
 
     return MBody(bottom: 40, onRefresh: load, children: [
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [PriorityLabel(priorityOf(f)), const SizedBox(width: 8), formStatus(status)]),
+        Row(children: [PriorityLabel(priorityOf(f)), const SizedBox(width: 8), Flexible(child: formStatus(status))]),
         const SizedBox(height: 8),
         H1('${f['categoryName']}', size: 22),
       ]),

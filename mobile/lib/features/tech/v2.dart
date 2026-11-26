@@ -345,6 +345,8 @@ class V2Icons {
       '<rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="10" r="1.8"/><path d="m21 15-4.5-4.5L7 19"/>';
   static const list =
       '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>';
+  static const link =
+      '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>';
   static const star =
       '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z" fill="currentColor"/>';
   // trades the design has no icon for
@@ -752,16 +754,19 @@ class V2Tag extends StatelessWidget {
     };
     // hugs its text: never stretches to the width of its parent
     return Container(
-      height: 24,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      constraints: const BoxConstraints(minHeight: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Center(
         widthFactor: 1,
+        heightFactor: 1,
         child: Text(
           text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: v2Text(
             size: 12,
             weight: FontWeight.w600,
@@ -869,6 +874,13 @@ class Avatar extends StatelessWidget {
     ),
   );
 }
+
+/// Caps the item on the right of a row (a status, tag, date or count) so a
+/// narrow phone with large text keeps room for the main text on the left.
+Widget rowEnd(BuildContext context, Widget child, {double fraction = 0.38}) => ConstrainedBox(
+  constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * fraction),
+  child: child,
+);
 
 /* --------------------------------------------------------------- surfaces */
 
@@ -1111,8 +1123,8 @@ class PhotoPicker extends StatelessWidget {
         ])
       else
         Container(
-          height: 104,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          constraints: const BoxConstraints(minHeight: 104),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: c.s1,
             borderRadius: BorderRadius.circular(16),
@@ -1313,6 +1325,9 @@ class V2Chip extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               label,
+              // a long room name stays on one line, shortened with "..."
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: v2Text(
                 size: 13.5,
                 weight: FontWeight.w600,
@@ -1490,7 +1505,14 @@ class V2Timeline extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            Meta(entries[i].when),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                entries[i].when,
+                                textAlign: TextAlign.right,
+                                style: v2Text(size: 12.5, color: c.tx3),
+                              ),
+                            ),
                           ],
                         ),
                         if (entries[i].text != null &&
@@ -1574,8 +1596,13 @@ class BackTop extends StatelessWidget {
           style: v2Text(size: 16, weight: FontWeight.w700, color: context.v.tx),
         ),
       ),
-      trailing ??
-          (centered ? const SizedBox(width: 40) : const SizedBox.shrink()),
+      if (trailing != null)
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.4),
+          child: trailing,
+        )
+      else if (centered)
+        const SizedBox(width: 40),
     ],
   );
 }
@@ -1727,13 +1754,21 @@ class V2BottomNav extends StatelessWidget {
                               color: i == index ? c.ac : c.tx3,
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              items[i].label,
-                              style: v2Text(
-                                size: 11.5,
-                                weight: FontWeight.w600,
-                                color: i == index ? c.ac : c.tx3,
-                                height: 1.2,
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                items[i].label,
+                                maxLines: 1,
+                                // large system text would push the bar out
+                                // of its 50 px row
+                                textScaler: MediaQuery.textScalerOf(context)
+                                    .clamp(maxScaleFactor: 1.3),
+                                style: v2Text(
+                                  size: 11.5,
+                                  weight: FontWeight.w600,
+                                  color: i == index ? c.ac : c.tx3,
+                                  height: 1.2,
+                                ),
                               ),
                             ),
                           ],

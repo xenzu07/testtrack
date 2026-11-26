@@ -161,7 +161,7 @@ class _TechHistoryTabState extends State<TechHistoryTab> {
             ]),
           ),
           const SizedBox(width: 8),
-          status,
+          rowEnd(context, status),
         ]),
       ),
     );

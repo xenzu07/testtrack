@@ -18,6 +18,8 @@ void main() {
     test('a closed report without a rating asks to be rated', () {
       expect(needsRating({'status': 'CLOSED', 'feedback': null}), isTrue);
       expect(needsRating({'status': 'CLOSED', 'feedback': {'rating': 5}}), isFalse);
+      // closed because it was linked to an earlier report: nothing to rate
+      expect(needsRating({'status': 'CLOSED', 'feedback': null, 'duplicateOfId': 'r0'}), isFalse);
     });
 
     test('a returned or missing Job Order Form needs the reporter', () {

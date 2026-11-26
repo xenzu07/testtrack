@@ -5,7 +5,7 @@ import type { FormStatus, PriorityLevel, Status, Urgency } from './types';
 const FORM_LABEL: Record<FormStatus, string> = {
   SUBMITTED: 'New',
   RECEIVED: 'Received',
-  APPROVED: 'Approved',
+  APPROVED: 'Accepted',
   RETURNED: 'Returned',
 };
 export function FormStatusBadge({ status }: { status: FormStatus }) {

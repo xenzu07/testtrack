@@ -205,7 +205,8 @@ class _SkillsSurveyScreenState extends State<SkillsSurveyScreen> {
         child: StepBars(total: units.length, done: step + 1),
       ),
       Expanded(
-        child: MBody(bottom: 24, children: [
+        // keyed by step: each trade opens at the top of its questions
+        child: MBody(key: ValueKey(step), bottom: 24, children: [
           Row(children: [
             IconSquare.trade(u['name'] as String),
             const SizedBox(width: 12),

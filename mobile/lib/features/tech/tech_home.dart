@@ -189,7 +189,7 @@ class _HomeTab extends StatelessWidget {
           children: [
             Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
               const Expanded(child: H2('My jobs')),
-              if (!loading && error == null) Meta('$fresh New · $active Active'),
+              if (!loading && error == null) Flexible(child: Meta('$fresh New · $active Active', align: TextAlign.right)),
             ]),
             if (loading)
               Padding(
@@ -247,9 +247,9 @@ class _JobCard extends StatelessWidget {
           Flexible(child: jobStatus(job, long: false)),
           const Spacer(),
           if (fresh)
-            Meta(timeAgoShort(job['updatedAt'] as String? ?? job['createdAt'] as String))
+            rowEnd(context, Meta(timeAgoShort(job['updatedAt'] as String? ?? job['createdAt'] as String)))
           else if (overdue)
-            const V2Tag('Overdue', tone: TagTone.bad),
+            rowEnd(context, const V2Tag('Overdue', tone: TagTone.bad)),
         ]),
         const SizedBox(height: 14),
         V2Button('Open Job', kind: BtnKind.pri, block: true, onPressed: onOpen),

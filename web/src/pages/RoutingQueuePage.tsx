@@ -8,14 +8,11 @@ import { ErrorBox, RefreshButton, Flag, PriorityBadge } from '../ui';
 import type { RoutingQueue, RoutingQueueItem } from '../types';
 
 // Reports waiting for a job order, most important first, each with the
-// recommended trade unit and technician. One click creates the job order,
-// but only when nothing needs a coordinator's judgement first.
+// recommended trade unit and technician. Each opens on its report page, where
+// the coordinator accepts the reporter's signed request and assigns it.
 export default function RoutingQueuePage() {
   const [queue, setQueue] = useState<RoutingQueue | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-
   const load = useCallback(async () => {
     setError(null);
     try {
@@ -33,31 +30,6 @@ export default function RoutingQueuePage() {
     void load();
   });
 
-  async function confirm(item: RoutingQueueItem) {
-    const tech = item.recommendedTechnician!;
-    const ok = window.confirm(
-      `Create a job order for "${item.category.name}" (${locationText(item.location)})?\n\n` +
-        `Trade unit: ${item.proposedTradeUnit.name}\nTechnician: ${tech.fullName}\n\n` +
-        `The technician will be asked to accept it.`,
-    );
-    if (!ok) return;
-    setBusyId(item.id);
-    setNotice(null);
-    try {
-      const res = await api.post<{ jobOrderNo: string }>('/job-orders', {
-        reportId: item.id,
-        tradeUnitId: item.proposedTradeUnit.id,
-        technicianId: tech.id,
-        routingRemarks: 'Confirmed from the routing queue recommendation',
-      });
-      setNotice(`${res.data.jobOrderNo} created and offered to ${tech.fullName}.`);
-      await load();
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-    setBusyId(null);
-  }
-
   const items = queue?.items ?? [];
 
   return (
@@ -66,14 +38,13 @@ export default function RoutingQueuePage() {
         <div>
           <h1>Pending Reports</h1>
           <p className="muted subtitle">
-            Reports waiting for a job order, highest priority first. Nothing is assigned until you
-            confirm.
+            Reports waiting for a job order, highest priority first. Open one to accept its request
+            and assign it.
           </p>
         </div>
         <RefreshButton onClick={() => void load()} />
       </div>
 
-      {notice && <p className="notice" style={{ marginBottom: 16 }}>{notice}</p>}
       {error && <ErrorBox message={error} onRetry={() => void load()} />}
       {queue && queue.linkedDuplicatesWaiting > 0 && (
         <p className="muted">
@@ -111,23 +82,13 @@ export default function RoutingQueuePage() {
                   </p>
                 </div>
                 <div className="q-act">
-                  {r.canAutoConfirm ? (
-                    <>
-                      <Link className="btn btn-small" to={`/reports/${r.id}`}>
-                        Open
-                      </Link>
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-small"
-                        disabled={busyId !== null}
-                        onClick={() => void confirm(r)}
-                      >
-                        {busyId === r.id ? 'Creating...' : 'Confirm and create job order'}
-                      </button>
-                    </>
-                  ) : (
-                    <Link className="btn btn-primary btn-small" to={`/reports/${r.id}`} title={reasons.join(' · ') || undefined}>
+                  {reasons.length > 0 ? (
+                    <Link className="btn btn-primary btn-small" to={`/reports/${r.id}`} title={reasons.join(' · ')}>
                       Review first
+                    </Link>
+                  ) : (
+                    <Link className="btn btn-primary btn-small" to={`/reports/${r.id}`}>
+                      Open
                     </Link>
                   )}
                 </div>
@@ -159,7 +120,9 @@ export default function RoutingQueuePage() {
                 </div>
                 <div className="q-cell">
                   {tech ? (
-                    <span className="q-av" aria-hidden="true">{initials(tech.fullName)}</span>
+                    <span className="q-av" aria-hidden="true" style={{ background: TRADE_COLOR[r.proposedTradeUnit.name] ?? '#4f6258' }}>
+                      {initials(tech.fullName)}
+                    </span>
                   ) : (
                     <span className="q-av q-none" aria-hidden="true">?</span>
                   )}
@@ -207,6 +170,16 @@ const initials = (name: string) =>
     .slice(0, 2)
     .map((w) => w[0].toUpperCase())
     .join('') || '?';
+
+// avatar colour by trade, as on the technician app's trade icons
+const TRADE_COLOR: Record<string, string> = {
+  Electrical: '#2f6fe0',
+  Plumbing: '#12927a',
+  Mechanical: '#7b55d9',
+  Carpentry: '#4f6258',
+  Masonry: '#d6456a',
+  Painting: '#d9711a',
+};
 
 const PEOPLE_TAG = ['Just the reporter', '2–10 people affected', '11–50 people affected', 'More than 50 people affected'];
 

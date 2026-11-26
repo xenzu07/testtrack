@@ -105,7 +105,7 @@ export class JobOrdersService {
   async create(userId: string, dto: CreateJobOrderDto) {
     const report = await this.prisma.report.findUnique({
       where: { id: dto.reportId },
-      include: { jobOrder: true, proposedTradeUnit: true },
+      include: { jobOrder: true, proposedTradeUnit: true, jobOrderForm: true },
     });
     if (!report) throw new NotFoundException('Report not found');
     if (report.jobOrder) {
@@ -124,6 +124,14 @@ export class JobOrdersService {
     ) {
       throw new BadRequestException(
         'This report can no longer receive a job order',
+      );
+    }
+    // the reporter's signed request must be accepted before any work is routed
+    if (report.jobOrderForm?.status !== 'APPROVED') {
+      throw new BadRequestException(
+        report.jobOrderForm
+          ? `Accept the reporter's Job Order Form (${report.jobOrderForm.formNo}) before creating the job order.`
+          : 'The reporter has not signed a Job Order Form for this report yet. A job order can be created once it is signed and accepted.',
       );
     }
 

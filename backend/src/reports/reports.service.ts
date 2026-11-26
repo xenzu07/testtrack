@@ -38,6 +38,12 @@ export function forReporter<T extends object | null>(report: T): T {
   if (!report) return report;
   const copy = { ...report } as Record<string, unknown>;
   for (const f of INTERNAL_FIELDS) delete copy[f];
+  // a reporter never sees who else reported the same problem
+  const dup = copy.duplicateOf as Record<string, unknown> | null | undefined;
+  if (dup && 'reporter' in dup) {
+    const { reporter: _hidden, ...rest } = dup;
+    copy.duplicateOf = rest;
+  }
   return copy as T;
 }
 
@@ -67,6 +73,11 @@ const reportInclude = {
     select: {
       id: true,
       status: true,
+      createdAt: true,
+      category: { select: { name: true } },
+      location: { select: { building: true, floor: true, room: true } },
+      // coordinators only: removed for reporters (see forReporter)
+      reporter: { select: { fullName: true } },
       jobOrder: {
         select: {
           id: true,
@@ -388,6 +399,13 @@ export class ReportsService {
     if (!report) throw new NotFoundException('Report not found');
     if (report.reporterId !== userId) {
       throw new ForbiddenException('You can only rate your own reports');
+    }
+    // a report linked as a duplicate is closed at once, but nothing was
+    // repaired under it: the repair is rated on the earlier report
+    if (report.duplicateOfId) {
+      throw new BadRequestException(
+        'This report was joined to an earlier report of the same problem, so there is no repair to rate here',
+      );
     }
     if (report.status !== Status.CLOSED) {
       throw new BadRequestException(

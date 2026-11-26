@@ -15,6 +15,7 @@ import 'package:facilitrack_mobile/core/theme.dart';
 import 'package:facilitrack_mobile/features/auth/auth_provider.dart';
 import 'package:facilitrack_mobile/features/auth/login_screen.dart';
 import 'package:facilitrack_mobile/features/notifications/notifications.dart';
+import 'package:facilitrack_mobile/features/forms/signature_pad.dart';
 import 'package:facilitrack_mobile/features/reporter/rep_form.dart';
 import 'package:facilitrack_mobile/features/reporter/rep_home.dart';
 import 'package:facilitrack_mobile/features/reporter/rep_new_report.dart';
@@ -23,6 +24,7 @@ import 'package:facilitrack_mobile/features/survey/skills_survey_screen.dart';
 import 'package:facilitrack_mobile/features/tech/tech_home.dart';
 import 'package:facilitrack_mobile/features/tech/tech_job_screen.dart';
 import 'package:facilitrack_mobile/features/tech/tech_notifications.dart';
+import 'package:facilitrack_mobile/features/tech/v2.dart';
 import 'support/fake_api.dart';
 
 /// Phone and tablet sizes in logical pixels.
@@ -79,8 +81,44 @@ Future<void> _scrollAll(WidgetTester tester) async {
   await _settle(tester);
 }
 
-Future<void> _tap(WidgetTester tester, Finder f) async {
+/// Long lists build only what is near the screen: scrolls until [f] is built.
+// "find.text(x).first" throws instead of finding nothing when x isn't built
+bool _has(Finder f) {
+  try {
+    return f.evaluate().isNotEmpty;
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<void> _reveal(WidgetTester tester, Finder f) async {
+  if (!_has(f)) {
+    // the page's list, not the small scroll area inside a multi-line text box
+    final lists = find.byWidgetPredicate((w) =>
+        w is Scrollable && w.axisDirection == AxisDirection.down && w.restorationId != 'textfield');
+    // scrolls by moving the list itself: a drag at the top would pull to
+    // refresh and briefly replace the screen with a spinner
+    ScrollPosition? page() {
+      final all = tester.stateList<ScrollableState>(lists).toList()
+        ..sort((a, b) => b.position.maxScrollExtent.compareTo(a.position.maxScrollExtent));
+      return all.isEmpty ? null : all.first.position;
+    }
+    for (final dir in [-1.0, 1.0]) {
+      for (var i = 0; i < 30 && !_has(f); i++) {
+        final p = page();
+        if (p == null) break;
+        p.jumpTo((p.pixels + 200 * dir).clamp(p.minScrollExtent, p.maxScrollExtent));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+  }
+  if (!_has(f)) throw StateError('nothing found: $f');
   await tester.ensureVisible(f.first);
+  await tester.pump();
+}
+
+Future<void> _tap(WidgetTester tester, Finder f) async {
+  await _reveal(tester, f);
   await tester.pump();
   await tester.tap(f.first, warnIfMissed: false);
   await _settle(tester);
@@ -104,7 +142,9 @@ Future<void> checkScreen(
       final old = FlutterError.onError;
       FlutterError.onError = (e) {
         final first = e.exceptionAsString().split('\n').first;
-        problems.add('$where: $first');
+        // where in our code: the widget Flutter names as the cause
+        final at = RegExp(r'lib/[\w/]+\.dart:\d+').firstMatch(e.toString())?.group(0) ?? '';
+        problems.add('$where: $first $at');
       };
       try {
         final auth = AuthProvider();
@@ -130,8 +170,9 @@ Future<void> checkScreen(
         await _settle(tester);
         await _scrollAll(tester);
         if (act != null) await act(tester);
-      } catch (e) {
-        problems.add('$where: ${'$e'.split('\n').first}');
+      } catch (e, st) {
+        final line = RegExp(r'(lib/[\w/]+|screen_sizes_test)\.dart:\d+').allMatches('$st').map((m) => m.group(0)).take(2).join(' < ');
+        problems.add('$where: ${'$e'.split('\n').first} $line');
       } finally {
         FlutterError.onError = old;
       }
@@ -175,11 +216,11 @@ void main() {
     testWidgets('Job sheets: decline, update, finish, delay', (t) async {
       fakeServer.respond = (o) => o.path.startsWith('/job-orders/j') ? job('IN_PROGRESS') : null;
       await checkScreen(t, 'Job sheets', () => const TechJobScreen(jobId: 'j1'), act: (t) async {
-        await _tap(t, find.text('Update'));
+        await _tap(t, find.widgetWithText(V2Button, 'Update'));
         await _tap(t, find.text('Gallery'));
         await _scrollAll(t);
         await _tap(t, find.text('Cancel'));
-        await _tap(t, find.text('Finish job'));
+        await _tap(t, find.widgetWithText(V2Button, 'Finish job'));
         await _tap(t, find.text('Camera'));
         await _scrollAll(t);
         await _tap(t, find.text('Cancel'));
@@ -239,12 +280,15 @@ void main() {
         if (o.path == '/job-order-forms') return {'formNo': 'JOF-2026-0099'};
         return null;
       };
-      await checkScreen(t, 'New report', () => const RepNewReportScreen(recent: [longPlace, shortPlace]), role: 'REPORTER',
+      await checkScreen(t, 'New report', () => const RepNewReportScreen(), role: 'REPORTER',
           act: (t) async {
-        await _tap(t, find.text('New Building · Department of Management Entrepreneurship Cluster Faculty Room'));
+        await _tap(t, find.text('Choose building'));
+        await _tap(t, find.text('New Building'));
         await _tap(t, find.text('Next'));
         await _tap(t, find.text('Wiring / Outlet'));
+        await _reveal(t, find.byType(TextField));
         await t.enterText(find.byType(TextField).first, 'The outlet sparks and smells burnt since this morning.');
+        await _settle(t);
         await _tap(t, find.text('Gallery'));
         await _scrollAll(t);
         await _tap(t, find.text('Next'));
@@ -255,8 +299,8 @@ void main() {
         await _tap(t, find.text('Next: Job Order Form'));
         await _scrollAll(t);
         // sign and send
-        final pad = find.bySemanticsLabel(RegExp('Signature box'));
-        await t.ensureVisible(pad);
+        final pad = find.byType(SignaturePad);
+        await _reveal(t, pad);
         final g = await t.startGesture(t.getTopLeft(pad) + const Offset(20, 30));
         for (var i = 0; i < 20; i++) {
           await g.moveBy(const Offset(8, 2));
@@ -270,6 +314,40 @@ void main() {
 
     testWidgets('Report detail, being fixed', (t) async {
       await checkScreen(t, 'Report detail', () => const RepReportDetailScreen(reportId: 'r1'), role: 'REPORTER');
+    });
+
+    testWidgets('Report detail, linked to an earlier report', (t) async {
+      fakeServer.respond = (o) {
+        if (o.path != '/reports/r1') return null;
+        // the linked report is closed; the earlier one is being handled
+        final r = report(status: 'CLOSED', form: form(status: 'RECEIVED'));
+        return {
+          ...r,
+          'duplicateOfId': 'r0',
+          'duplicateOf': {
+            'id': 'r0',
+            'status': 'ASSIGNED',
+            'jobOrder': {'id': 'j0', 'jobOrderNo': 'JO-2026-0139', 'status': 'ASSIGNED', 'targetDate': null, 'technician': {'id': 't1', 'fullName': 'Ramon Cruz'}},
+          },
+          'logs': [
+            ...(r['logs'] as List),
+            log('UNDER_REVIEW', 'UNDER_REVIEW', const Duration(minutes: 30),
+                'Linked to an earlier report of the same problem, handled under job order JO-2026-0139'),
+          ],
+        };
+      };
+      await checkScreen(t, 'Linked report', () => const RepReportDetailScreen(reportId: 'r1'), role: 'REPORTER',
+          act: (t) async {
+        final p = t.state<ScrollableState>(find.byType(Scrollable).first).position;
+        p.jumpTo(0);
+        await _settle(t);
+        for (final text in ['Linked to an earlier report', 'PROGRESS OF THE REPAIR', 'Ramon is on it', 'Your report is closed as a duplicate']) {
+          await _reveal(t, find.text(text).first);
+        }
+        await _scrollAll(t);
+        expect(find.text('What you reported'), findsNothing);
+        expect(find.text('Fixed and verified. How did it go?'), findsNothing);
+      });
     });
 
     testWidgets('Report detail, rate the repair', (t) async {

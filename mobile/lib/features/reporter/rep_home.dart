@@ -71,16 +71,9 @@ class _RepShellState extends State<RepShell> {
   }
 
   Future<void> newReport() async {
-    // recent places, newest first, for one-tap picking
-    final seen = <String>{};
-    final recent = <Map>[];
-    for (final r in reports) {
-      final l = r['location'] as Map?;
-      if (l != null && seen.add(l['id'] as String)) recent.add(l);
-    }
     final result = await Navigator.push<Object>(
       context,
-      MaterialPageRoute(builder: (_) => RepNewReportScreen(recent: recent)),
+      MaterialPageRoute(builder: (_) => const RepNewReportScreen()),
     );
     await load(silent: true);
     if (result is SentResult && mounted) open(result.report['id'] as String);
@@ -271,7 +264,7 @@ class _HomeTab extends StatelessWidget {
         Row(children: [
           Flexible(child: status),
           const Spacer(),
-          if (when != null) Meta(when),
+          if (when != null) rowEnd(context, Meta(when, align: TextAlign.right)),
         ]),
         const SizedBox(height: 14),
         V2Button(button, kind: BtnKind.pri, block: true, onPressed: onTap),
@@ -428,7 +421,7 @@ class _MyReportsTabState extends State<_MyReportsTab> {
             ]),
           ),
           const SizedBox(width: 8),
-          right,
+          rowEnd(context, right),
         ]),
       ),
     );
@@ -476,7 +469,7 @@ class _ProfileTab extends StatelessWidget {
               V2Icon(icon, size: 20, color: color ?? c.tx3),
               const SizedBox(width: 12),
               Expanded(child: Text(label, style: v2Text(size: 14.5, weight: FontWeight.w600, color: color ?? c.tx))),
-              ?trailing,
+              if (trailing != null) ...[const SizedBox(width: 8), rowEnd(context, trailing)],
             ]),
           ),
         );

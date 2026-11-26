@@ -51,7 +51,8 @@ async function main() {
     const mj = main.jobOrder && main.jobOrder.status !== Status.CANCELLED ? main.jobOrder : null;
     const label = `"${c.description.slice(0, 40)}"`;
 
-    if (!cj && c.status === main.status) continue; // already in line
+    // linked reports are closed; one with no job order of its own is in line
+    if (!cj && c.status === Status.CLOSED) continue;
 
     if (cj && mj) {
       const olderIsMain = main.createdAt <= c.createdAt;
@@ -65,7 +66,7 @@ async function main() {
     } else if (cj && !mj) {
       console.log(`  ${label}: only the linked report has a job order (${cj.jobOrderNo}) -> it becomes the main report`);
     } else {
-      console.log(`  ${label}: status ${c.status} -> ${main.status} (follows the main report)`);
+      console.log(`  ${label}: status ${c.status} -> CLOSED (linked as a duplicate)`);
     }
     if (dryRun) continue;
 

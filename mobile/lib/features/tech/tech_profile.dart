@@ -128,7 +128,7 @@ class _TechProfileTabState extends State<TechProfileTab> {
           V2Icon(icon, size: 20, color: color ?? c.tx3),
           const SizedBox(width: 12),
           Expanded(child: Text(label, style: v2Text(size: 14.5, weight: FontWeight.w600, color: color ?? c.tx))),
-          ?trailing,
+          if (trailing != null) ...[const SizedBox(width: 8), rowEnd(context, trailing)],
         ]),
       ),
     );

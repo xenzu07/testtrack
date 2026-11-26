@@ -106,9 +106,11 @@ class _TechStatsTabState extends State<TechStatsTab> {
             Text('$fixed', style: v2Text(size: 40, weight: FontWeight.w800, spacing: -1, color: c.tx, height: 1.2)),
             const SizedBox(width: 10),
             if (delta != null)
-              Meta(
-                delta == 0 ? 'same as $_periodWord' : '${delta > 0 ? '+' : ''}$delta vs $_periodWord',
-                color: delta >= 0 ? c.ac : c.red,
+              Flexible(
+                child: Meta(
+                  delta == 0 ? 'same as $_periodWord' : '${delta > 0 ? '+' : ''}$delta vs $_periodWord',
+                  color: delta >= 0 ? c.ac : c.red,
+                ),
               ),
           ]),
           const SizedBox(height: 8),

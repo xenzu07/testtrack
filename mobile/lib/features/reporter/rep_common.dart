@@ -34,13 +34,16 @@ String? reachedAt(Map r, String status) {
   return null;
 }
 
-bool needsRating(Map r) => r['status'] == 'CLOSED' && r['feedback'] == null;
+// a report linked to an earlier one is closed without a repair of its own: nothing to rate
+bool needsRating(Map r) => r['status'] == 'CLOSED' && r['feedback'] == null && r['duplicateOfId'] == null;
 bool formReturned(Map r) => r['jobOrderForm']?['status'] == 'RETURNED';
 bool formMissing(Map r) => r['jobOrderForm'] == null && r['status'] != 'CLOSED' && r['duplicateOfId'] == null;
 bool needsYou(Map r) => needsRating(r) || formReturned(r) || formMissing(r);
 
 /// The report's status as a dot and words, in the reporter's terms.
 StatusDot reportStatus(Map r, {bool withTarget = false}) {
+  // handled with an earlier report of the same problem
+  if (r['duplicateOfId'] != null) return const StatusDot('Linked', StKind.tech);
   final target = activeJob(r)?['targetDate'];
   final t = withTarget && target != null ? ' · Target ${shortDay(target)}' : '';
   switch (r['status']) {

@@ -122,14 +122,14 @@ describe('linkSameProblem', () => {
     expect(tx.jobAssignment.updateMany).toHaveBeenCalled();
   });
 
-  it('existing data: the kept job is already completed, the copy gets its status', async () => {
+  it('existing data: the kept job is already completed, the copy is closed as linked', async () => {
     const { tx, r, jobs } = db({
       older: { status: Status.COMPLETED, reporterId: 'rep-a', jobOrder: job('5', Status.COMPLETED, 'ACCEPTED') },
       newer: { status: Status.ASSIGNED, reporterId: 'rep-b', jobOrder: job('6', Status.ASSIGNED, 'ACCEPTED') },
     });
     await linkSameProblem(tx as never, 'older', 'newer', 'coord');
     expect(jobs['6'].status).toBe(Status.CANCELLED);
-    expect(r.newer.status).toBe(Status.COMPLETED);
+    expect(r.newer.status).toBe(Status.CLOSED);
   });
 
   it('only the newer report has a job order: it becomes the main report', async () => {
@@ -140,7 +140,7 @@ describe('linkSameProblem', () => {
     const out = await linkSameProblem(tx as never, 'older', 'newer', 'coord');
     expect(out.mainReportId).toBe('newer');
     expect(r.older.duplicateOfId).toBe('newer');
-    expect(r.older.status).toBe(Status.IN_PROGRESS);
+    expect(r.older.status).toBe(Status.CLOSED);
     expect(Object.keys(jobs)).toHaveLength(0); // nothing cancelled
   });
 
@@ -153,6 +153,22 @@ describe('linkSameProblem', () => {
     const out = await linkSameProblem(tx as never, 'older', 'newer', 'coord');
     expect(r.third.duplicateOfId).toBe('older');
     expect(out.reporterIds).toEqual(expect.arrayContaining(['rep-b', 'rep-c']));
+  });
+});
+
+describe('a report linked as a duplicate', () => {
+  it('is closed, says where the work continues, and never names the other reporter', async () => {
+    const { tx, r, logs } = db({
+      older: { status: Status.ASSIGNED, reporterId: 'rep-a', jobOrder: job('5', Status.ASSIGNED, 'ACCEPTED') },
+      newer: { status: Status.UNDER_REVIEW, reporterId: 'rep-b' },
+    });
+    await linkSameProblem(tx as never, 'older', 'newer', 'coord');
+    expect(r.newer.status).toBe(Status.CLOSED);
+    expect(r.older.status).toBe(Status.ASSIGNED); // the main report is unchanged
+    const entry = logs.find((l) => l.reportId === 'newer')!;
+    expect(entry.remarks).toMatch(/^Linked to an earlier report of the same problem/);
+    expect(entry.remarks).toContain('JO-5');
+    expect(entry.remarks).not.toContain('rep-a');
   });
 });
 

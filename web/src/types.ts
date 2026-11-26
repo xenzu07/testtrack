@@ -215,6 +215,10 @@ export interface Report {
   duplicateOf?: {
     id: string;
     status: Status;
+    createdAt?: string;
+    category?: { name: string };
+    location?: { building: string; floor: string; room: string };
+    reporter?: { fullName: string };
     jobOrder: {
       id: string;
       jobOrderNo: string;
@@ -261,6 +265,7 @@ export interface ReportSummary {
   createdAt: string;
   category: { id: string; name: string };
   location: Location;
+  reporter?: { fullName: string };
   jobOrder: {
     id: string;
     jobOrderNo: string;

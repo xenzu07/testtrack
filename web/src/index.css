@@ -1325,3 +1325,46 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--accent); width
 .viz-table { max-height: 300px; overflow: auto; margin-top: 4px; border-radius: 12px; }
 .viz-table thead th { position: sticky; top: 0; background: var(--surface); z-index: 1; }
 .viz-toggle { min-width: 118px; justify-content: center; }
+
+/* ---------- report detail: one stage of the flow at a time (v3) ---------- */
+.flow-panel { display: flex; flex-direction: column; gap: 16px; }
+/* the panel's gap spaces the stage cards; their own bottom margin would double it */
+.flow-panel > .card { margin-bottom: 0; }
+.stage { padding: 20px 22px; }
+.stage-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.stage-step { font-size: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: var(--muted); }
+.stage h2 { margin: 0 0 4px; }
+.stage .lead { margin: 0 0 14px; color: var(--muted); font-size: 13.5px; }
+.stage .kv { margin-top: 6px; }
+.stage .section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.stage .section h3 { margin: 0 0 10px; font-size: 14.5px; }
+.stage .form-row { margin: 12px 0 10px; }
+.stage-tabs { padding-top: 16px; }
+.stage-tabs .stage-tabs-head { padding: 0 14px; }
+.stage-tabs .tab-panel { padding: 14px 14px 0; }
+/* the strip and the tab bar line up with the step heading and the content */
+.stage-tabs .done-strip { margin: 0 14px 10px; }
+.side-tabs.stage-tabs .tabs { width: auto; margin: 0 14px 4px; }
+.done-strip { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); font-size: 13.5px; margin: 0 8px 8px; }
+.done-strip svg { width: 16px; height: 16px; color: var(--accent); flex: none; }
+.done-strip b { color: var(--text); }
+.locked { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); color: var(--muted); font-size: 13px; }
+.locked svg { width: 16px; height: 16px; flex: none; }
+.ask { padding: 12px 14px; border-radius: 12px; background: var(--amber-soft); font-size: 13.5px; color: var(--text-2); }
+.ask b { color: var(--text); }
+.photo-sm { display: grid; place-items: center; width: 100%; height: 160px; object-fit: cover; border-radius: 14px; color: var(--muted); font-size: 12.5px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, var(--surface-2)), var(--surface-2)); }
+.stage .stars { display: flex; gap: 4px; color: #e2a90f; margin: 0; }
+.stage .stars svg { width: 22px; height: 22px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chips span { padding: 4px 10px; border-radius: 999px; background: var(--hover); font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.ph-photo { display: grid; place-items: center; height: 220px; border-radius: 14px; color: var(--muted); font-size: 13px; background: var(--surface-2); }
+.stage .btn svg { width: 16px; height: 16px; }
+
+/* step 1 with a "Possible duplicates" tab, and a closed form badge */
+.stage .stage-tab-bar { display: flex; width: 100%; margin: 6px 0 14px; box-shadow: none; background: var(--surface-2); border-radius: 14px; padding: 4px; }
+.stage .stage-tab-bar .tab { flex: 1; justify-content: center; text-align: center; white-space: nowrap; padding: 9px 10px; font-size: 13.5px; gap: 8px; }
+.stage .stage-tab-bar .tab-active .tab-count-alert { background: #fff; color: var(--red); }
+.stage-dup-panel .dup-card:first-of-type { margin-top: 0; }
+.badge.f-CLOSED { background: var(--hover); color: var(--muted); --dot: var(--muted); }
+
