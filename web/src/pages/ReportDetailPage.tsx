@@ -939,7 +939,7 @@ function VerifyStage({ report, job, onDone }: { report: Report; job: JobOrder; o
       ) : (
         <div className="photo-sm">No completion photo</div>
       )}
-      {done?.remarks && <p className="small" style={{ margin: '10px 0 0' }}>“{done.remarks}”</p>}
+      {done?.remarks && <p className="small" style={{ margin: '10px 0 16px' }}>“{done.remarks}”</p>}
       <label className="field">
         Remarks (required when sending back)
         <textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} />

@@ -368,6 +368,11 @@ export class FormsService {
     note?: string,
   ) {
     const f = await this.load(id);
+    // opening a report marks its form received; a second open (or two tabs)
+    // finds it already received, which is not an error
+    if (action === 'receive' && f.status === FormStatus.RECEIVED) {
+      return this.present(f, true);
+    }
     const now = new Date();
     const from: FormStatus[] =
       action === 'receive'

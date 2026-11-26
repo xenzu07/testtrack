@@ -666,16 +666,6 @@ select {
   .btn { min-height: 38px; }
   .filters select { flex: 1 1 140px; }
   .filters .search { max-width: none; flex-basis: 100%; }
-  .table-responsive thead { display: none; }
-  .table-responsive, .table-responsive tbody, .table-responsive tr, .table-responsive td { display: block; width: 100%; }
-  .table-responsive tr { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-  .table-responsive tbody tr:last-child { border-bottom: none; }
-  .table-responsive td { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border: 0; white-space: normal; text-align: right; }
-  .table-responsive td::before { content: attr(data-label); color: var(--muted); font-size: 12px; font-weight: 500; text-align: left; flex-shrink: 0; }
-  .table-responsive td:first-child { display: block; text-align: left; font-size: 14.5px; padding-bottom: 6px; }
-  .table-responsive td:first-child::before { display: none; }
-  .table-responsive .row-empty td { display: block; text-align: center; }
-  .table-responsive .row-empty td::before { display: none; }
   .row-critical td:first-child { box-shadow: none; }
   .row-critical { box-shadow: inset 3px 0 0 var(--red); }
   .head-badges { justify-content: flex-start; }
@@ -820,7 +810,8 @@ select {
 
 /* report detail on narrow screens: summary, then the action panel, then
    priority / duplicates / history */
-@media (max-width: 1000px) {
+@media (max-width: 1180px) {
+  .detail-grid { grid-template-columns: minmax(0, 1fr); }
   .detail-main { display: contents; }
   .detail-main > * { order: 3; }
   .detail-main > .detail-summary { order: 1; }
@@ -988,7 +979,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--accent); width
 .table tbody tr:hover { background: var(--surface-2); }
 .table-clickable tbody tr:hover td a { color: var(--accent); }
 .row-critical td:first-child { box-shadow: inset 4px 0 0 var(--red); }
-.card.table-wrap { overflow: hidden; }
+.card.table-wrap { overflow-x: auto; }
 
 /* ---------- status, priority, flags: soft round pills ---------- */
 .badge {
@@ -1285,7 +1276,8 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--accent); width
 .dup-top .flag{flex:none}
 .dup-q{margin:12px 0 2px;font-weight:600;font-size:14px}
 .dup-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.dup-actions .btn{justify-content:center;gap:8px;height:42px;padding:0 14px;white-space:nowrap}
+.dup-actions .btn{justify-content:center;gap:8px;height:42px;padding:0 14px;white-space:nowrap;min-width:0}
+.dup-actions{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
 .dup-result{margin-top:12px;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-radius:12px;background:var(--surface);font-size:13.5px}
 .dup-result span{flex:1}
 .dup-result.ok{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
@@ -1363,8 +1355,28 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--accent); width
 
 /* step 1 with a "Possible duplicates" tab, and a closed form badge */
 .stage .stage-tab-bar { display: flex; width: 100%; margin: 6px 0 14px; box-shadow: none; background: var(--surface-2); border-radius: 14px; padding: 4px; }
-.stage .stage-tab-bar .tab { flex: 1; justify-content: center; text-align: center; white-space: nowrap; padding: 9px 10px; font-size: 13.5px; gap: 8px; }
+.stage .stage-tab-bar .tab { flex: 1; min-width: 0; justify-content: center; text-align: center; white-space: nowrap; padding: 9px 10px; font-size: 13.5px; gap: 8px; }
 .stage .stage-tab-bar .tab-active .tab-count-alert { background: #fff; color: var(--red); }
 .stage-dup-panel .dup-card:first-of-type { margin-top: 0; }
 .badge.f-CLOSED { background: var(--hover); color: var(--muted); --dot: var(--muted); }
 
+
+/* tables turn into stacked rows on phones; wider screens scroll them */
+@media (max-width: 700px) {
+  .table-responsive thead { display: none; }
+  .table-responsive, .table-responsive tbody, .table-responsive tr, .table-responsive td { display: block; width: 100%; }
+  .table-responsive tr { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .table-responsive tbody tr:last-child { border-bottom: none; }
+  .table-responsive td { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border: 0; white-space: normal; text-align: right; }
+  .table-responsive td::before { content: attr(data-label); color: var(--muted); font-size: 12px; font-weight: 500; text-align: left; flex-shrink: 0; }
+  .table-responsive td:first-child { display: block; text-align: left; font-size: 14.5px; padding-bottom: 6px; }
+  .table-responsive td:first-child::before { display: none; }
+  .table-responsive .row-empty td { display: block; text-align: center; }
+  .table-responsive .row-empty td::before { display: none; }
+}
+@media (max-width: 1180px) {
+  .tabs { flex-wrap: wrap; }
+}
+@media (min-width: 701px) and (max-width: 1180px) {
+  .card.table-wrap .table { min-width: 860px; }
+}
