@@ -346,6 +346,64 @@ describe('duplicate detection', () => {
     expect(prisma.report.findMany.mock.calls[0][0].where.duplicateOfId).toBeNull();
   });
 
+  it('an obvious match beats an older weak one', async () => {
+    // same category, same building, but another room and other wording
+    const olderWeak = {
+      id: 'older-weak',
+      createdAt: new Date('2026-11-01T10:00:00Z'),
+      categoryId: 'leak',
+      locationId: 'room9',
+      description: 'Pipe near the stairs drips sometimes',
+      location: loc,
+    };
+    const sameRoom = { id: 'same-room', createdAt: new Date('2026-11-25T10:00:00Z'), ...base };
+    const prisma = {
+      report: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'new', createdAt: new Date('2026-11-26T10:00:00Z'), ...base }),
+        findMany: jest.fn().mockResolvedValue([sameRoom, olderWeak]),
+      },
+      duplicateFlag: { upsert: jest.fn() },
+    };
+    const svc = new DuplicatesService(prisma as never, {} as never, {} as never, {} as never);
+    expect(await svc.detectFor('new')).toBe(1);
+    expect(prisma.duplicateFlag.upsert.mock.calls[0][0].create.candidateId).toBe('same-room');
+  });
+
+  it('another room on the same floor loses to the same room, even with the same wording', async () => {
+    const otherRoom = { ...base, id: 'other-room', locationId: 'clinic', createdAt: new Date('2026-11-01T10:00:00Z') };
+    const sameRoom = { ...base, id: 'same-room', createdAt: new Date('2026-11-25T10:00:00Z') };
+    const prisma = {
+      report: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'new', createdAt: new Date('2026-11-26T10:00:00Z'), ...base }),
+        findMany: jest.fn().mockResolvedValue([sameRoom, otherRoom]),
+      },
+      duplicateFlag: { upsert: jest.fn() },
+    };
+    const svc = new DuplicatesService(prisma as never, {} as never, {} as never, {} as never);
+    await svc.detectFor('new');
+    expect(prisma.duplicateFlag.upsert.mock.calls[0][0].create.candidateId).toBe('same-room');
+  });
+
+  it('the same room wins even when another room has identical wording and is older', async () => {
+    const otherRoom = { ...base, id: 'other-room', locationId: 'clinic', createdAt: new Date('2026-11-01T10:00:00Z') };
+    const sameRoom = {
+      ...base,
+      id: 'same-room',
+      description: 'Ceiling is leaking water near the door',
+      createdAt: new Date('2026-11-25T10:00:00Z'),
+    };
+    const prisma = {
+      report: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'new', createdAt: new Date('2026-11-26T10:00:00Z'), ...base }),
+        findMany: jest.fn().mockResolvedValue([sameRoom, otherRoom]),
+      },
+      duplicateFlag: { upsert: jest.fn() },
+    };
+    const svc = new DuplicatesService(prisma as never, {} as never, {} as never, {} as never);
+    await svc.detectFor('new');
+    expect(prisma.duplicateFlag.upsert.mock.calls[0][0].create.candidateId).toBe('same-room');
+  });
+
   it('flags nothing when no earlier report is similar enough', async () => {
     const prisma = {
       report: {

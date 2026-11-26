@@ -19,6 +19,8 @@ import {
 
 // only reports from roughly the same period are compared
 const LOOKBACK_DAYS = 60;
+// matches this close to the best one count as the same problem
+const NEAR_BEST = 10;
 
 const summary = {
   id: true,
@@ -71,10 +73,12 @@ export class DuplicatesService {
   }
 
   // Compares a report with earlier open reports nearby or of the same kind.
-  // Only the EARLIEST matching report is flagged: that is the original the
-  // problem would be handled under, so the coordinator decides once instead
-  // of comparing against several similar reports. Nothing is merged or
-  // changed on either report. Returns the number of flags (0 or 1).
+  // Only ONE report is flagged: the earliest match in the same room, or if
+  // none is in the same room, the earliest of the best matches (within
+  // NEAR_BEST points of the top score). Several reports of one problem thus
+  // point at the first of them, the original it would be handled under,
+  // while a report in another room never wins just by being older. Nothing is merged or changed on either report.
+  // Returns the number of flags (0 or 1).
   async detectFor(reportId: string): Promise<number> {
     const report = await this.prisma.report.findUnique({
       where: { id: reportId },
@@ -103,11 +107,17 @@ export class DuplicatesService {
     const me = this.toCandidate(report);
     const matches = others
       .map((o) => ({ other: o, ...similarity(me, this.toCandidate(o)) }))
-      .filter((m) => m.score >= FLAG_THRESHOLD)
+      .filter((m) => m.score >= FLAG_THRESHOLD);
+    // a report in the same room is the strongest sign of the same problem;
+    // otherwise the matches close to the best score
+    const sameRoom = matches.filter((m) => m.other.locationId === report.locationId);
+    const best = Math.max(0, ...matches.map((m) => m.score));
+    const pool = sameRoom.length > 0 ? sameRoom : matches.filter((m) => m.score >= best - NEAR_BEST);
+    const pick = pool
       .sort((a, b) => a.other.createdAt.getTime() - b.other.createdAt.getTime())
       .slice(0, 1);
 
-    for (const m of matches) {
+    for (const m of pick) {
       await this.prisma.duplicateFlag.upsert({
         where: { reportId_candidateId: { reportId, candidateId: m.other.id } },
         // a decision already made is never reopened by detection
@@ -123,7 +133,7 @@ export class DuplicatesService {
         },
       });
     }
-    return matches.length;
+    return pick.length;
   }
 
   // flags where this report may copy another, and where others may copy it

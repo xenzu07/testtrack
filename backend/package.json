@@ -32,6 +32,7 @@
     "db:merge-duplicates": "prisma db execute --file prisma/sql/005_merge_duplicate_job_orders.sql --schema prisma/schema.prisma",
     "duplicates:reconcile": "ts-node scripts/reconcile-duplicates.ts",
     "reports:clear": "ts-node scripts/clear-reports.ts",
+    "scenarios": "node scripts/scenarios.mjs",
     "db:phase6": "prisma db execute --file prisma/sql/006_phase6_job_order_forms.sql --schema prisma/schema.prisma",
     "db:phase8": "prisma db execute --file prisma/sql/007_phase8_notifications.sql --schema prisma/schema.prisma"
   },
