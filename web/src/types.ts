@@ -444,6 +444,8 @@ export interface TechnicianAnalytics {
     roles: { name: string; score: number }[];
   };
   range: { from: string; to: string; granularity: Granularity };
+  /** reporters' ratings (1-5) of closed repairs */
+  rating: { average: number | null; count: number; allTimeAverage: number | null; allTimeCount: number };
   offers: { total: number; accepted: number; declined: number; waiting: number; withdrawn: number };
   jobs: {
     completed: number;

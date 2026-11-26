@@ -127,7 +127,9 @@ export class AnalyticsService {
       throw new NotFoundException('Technician not found');
 
     const r = resolveRange(q.from, q.to);
-    const [offers, facts, active, history] = await Promise.all([
+    // reporters rate the repair once their report is closed
+    const rated = { report: { jobOrder: { technicianId } } };
+    const [offers, facts, active, history, ratingInRange, ratingAllTime] = await Promise.all([
       this.prisma.jobAssignment.groupBy({
         by: ['status'],
         where: { technicianId, assignedAt: { gte: r.from, lt: r.to } },
@@ -170,7 +172,19 @@ export class AnalyticsService {
           },
         },
       }),
+      this.prisma.feedback.aggregate({
+        where: { ...rated, createdAt: { gte: r.from, lt: r.to } },
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
+      this.prisma.feedback.aggregate({
+        where: rated,
+        _avg: { rating: true },
+        _count: { _all: true },
+      }),
     ]);
+    const avg = (a: { _avg: { rating: number | null } }) =>
+      a._avg.rating == null ? null : Math.round(a._avg.rating * 10) / 10;
 
     const n = (s: AssignmentStatus) =>
       offers.find((o) => o.status === s)?._count._all ?? 0;
@@ -192,6 +206,12 @@ export class AnalyticsService {
         })),
       },
       range: { from: r.fromDay, to: r.toDay, granularity: r.granularity },
+      rating: {
+        average: avg(ratingInRange),
+        count: ratingInRange._count._all,
+        allTimeAverage: avg(ratingAllTime),
+        allTimeCount: ratingAllTime._count._all,
+      },
       offers: {
         total: offers.reduce((s, o) => s + o._count._all, 0),
         accepted: n(AssignmentStatus.ACCEPTED),

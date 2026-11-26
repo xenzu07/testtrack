@@ -113,6 +113,20 @@ export default function TechnicianAnalyticsPage() {
             {formatHours(j.completionTime.medianHours)}
           </span>
         </div>
+        <div className="kpi">
+          <span className="kpi-label">Reporter rating</span>
+          <strong className="kpi-value">
+            {data.rating.average == null ? "—" : `${data.rating.average.toFixed(1)}`}
+            {data.rating.average != null && <span className="kpi-unit"> / 5</span>}
+          </strong>
+          <span className="kpi-sub">
+            {data.rating.count > 0
+              ? `from ${data.rating.count} ${data.rating.count === 1 ? "reporter" : "reporters"} in this period`
+              : "no ratings in this period"}
+            {data.rating.allTimeCount > data.rating.count &&
+              ` · all time ${data.rating.allTimeAverage!.toFixed(1)}`}
+          </span>
+        </div>
       </div>
 
       <ChartCard
