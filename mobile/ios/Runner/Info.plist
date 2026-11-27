@@ -9,6 +9,10 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>FaciliTrack uses the camera to take a photo of the problem you report or the repair you finished.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FaciliTrack lets you choose a photo of the problem you report or the repair you finished.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
